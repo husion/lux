@@ -6,6 +6,7 @@ pub enum LuxError {
     MismatchedLengths { wavelengths: usize, values: usize },
     NonMonotonicWavelengths,
     InvalidGridSpec,
+    InvalidInput(&'static str),
     UnsupportedObserver(&'static str),
     MissingObserver,
     ParseError(&'static str),
@@ -27,6 +28,7 @@ impl Display for LuxError {
                 write!(f, "wavelengths must be strictly increasing")
             }
             Self::InvalidGridSpec => write!(f, "invalid wavelength grid specification"),
+            Self::InvalidInput(message) => write!(f, "invalid input: {}", message),
             Self::UnsupportedObserver(name) => write!(f, "unsupported observer: {}", name),
             Self::MissingObserver => write!(f, "an observer is required for this operation"),
             Self::ParseError(message) => write!(f, "parse error: {}", message),

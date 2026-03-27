@@ -11,11 +11,7 @@ pub struct WavelengthGrid {
 
 impl WavelengthGrid {
     pub fn new(start: f64, end: f64, step: f64) -> LuxResult<Self> {
-        if !start.is_finite()
-            || !end.is_finite()
-            || !step.is_finite()
-            || step <= 0.0
-            || end < start
+        if !start.is_finite() || !end.is_finite() || !step.is_finite() || step <= 0.0 || end < start
         {
             return Err(LuxError::InvalidGridSpec);
         }
@@ -119,13 +115,7 @@ impl Spectrum {
         let values = &self.values;
 
         if target <= wavelengths[0] {
-            return linear_segment(
-                wavelengths[0],
-                values[0],
-                wavelengths[1],
-                values[1],
-                target,
-            );
+            return linear_segment(wavelengths[0], values[0], wavelengths[1], values[1], target);
         }
         if target >= wavelengths[wavelengths.len() - 1] {
             let last = wavelengths.len() - 1;
@@ -159,7 +149,12 @@ impl Spectrum {
     ) -> LuxResult<Self> {
         let scale = match mode {
             SpectrumNormalization::Max(target_max) => {
-                target_max / self.values.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+                target_max
+                    / self
+                        .values
+                        .iter()
+                        .copied()
+                        .fold(f64::NEG_INFINITY, f64::max)
             }
             SpectrumNormalization::Area(target_area) => {
                 let area: f64 = self
@@ -252,7 +247,8 @@ impl SpectralMatrix {
         let mut spectra = Vec::with_capacity(self.spectra.len());
         for values in &self.spectra {
             let spectrum = Spectrum::new(self.wavelengths.clone(), values.clone())?;
-            let interpolated = spectrum.cie_interp_linear(target_wavelengths, negative_values_allowed)?;
+            let interpolated =
+                spectrum.cie_interp_linear(target_wavelengths, negative_values_allowed)?;
             spectra.push(interpolated.values().to_vec());
         }
         SpectralMatrix::new(target_wavelengths.to_vec(), spectra)
@@ -314,7 +310,10 @@ pub fn getwld(wavelengths: &[f64]) -> LuxResult<Vec<f64>> {
         return Err(LuxError::NonMonotonicWavelengths);
     }
 
-    let diffs: Vec<f64> = wavelengths.windows(2).map(|pair| pair[1] - pair[0]).collect();
+    let diffs: Vec<f64> = wavelengths
+        .windows(2)
+        .map(|pair| pair[1] - pair[0])
+        .collect();
     let mut spacing = Vec::with_capacity(wavelengths.len());
     spacing.push(diffs[0]);
     for idx in 1..wavelengths.len() - 1 {
@@ -393,9 +392,7 @@ mod tests {
     #[test]
     fn clips_negative_values_when_requested() {
         let spectrum = Spectrum::new(vec![400.0, 410.0], vec![1.0, 0.0]).unwrap();
-        let resampled = spectrum
-            .cie_interp_linear(&[420.0], false)
-            .unwrap();
+        let resampled = spectrum.cie_interp_linear(&[420.0], false).unwrap();
         assert_eq!(resampled.values(), &[0.0]);
     }
 
@@ -414,10 +411,7 @@ mod tests {
         let normalized = spectrum
             .normalize(SpectrumNormalization::Area(1.0), None)
             .unwrap();
-        assert_eq!(
-            normalized.values(),
-            &[1.0 / 60.0, 2.0 / 60.0, 3.0 / 60.0]
-        );
+        assert_eq!(normalized.values(), &[1.0 / 60.0, 2.0 / 60.0, 3.0 / 60.0]);
     }
 
     #[test]
@@ -449,7 +443,10 @@ mod tests {
         .unwrap();
         let normalized = matrix
             .normalize_each(
-                &[SpectrumNormalization::Max(2.0), SpectrumNormalization::Area(1.0)],
+                &[
+                    SpectrumNormalization::Max(2.0),
+                    SpectrumNormalization::Area(1.0),
+                ],
                 None,
             )
             .unwrap();

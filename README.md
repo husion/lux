@@ -18,6 +18,16 @@ Current scope:
 - embedded CIE standard observers:
   - `1931_2`
   - `1964_10`
+- CIE 191:2010 mesopic support:
+  - `get_cie_mesopic_adaptation`
+  - `vlbar_cie_mesopic`
+- color transforms:
+  - `XYZ <-> Yxy`
+  - `XYZ <-> Yuv`
+  - `XYZ <-> Lab` (explicit white point)
+  - `XYZ <-> Luv` (explicit white point)
+  - `XYZ <-> LMS` (observer/default matrix or explicit matrix)
+  - `XYZ <-> sRGB`
 
 Short example:
 
@@ -31,7 +41,6 @@ let lumens = spd_to_power(&spectrum, PowerType::Photometric, Some(&observer))?;
 
 Planned next:
 
-- tristimulus integration (`spd_to_xyz`)
 - reflectance and illuminant datasets
 - CCT and chromaticity transforms
 - batch spectral matrices

@@ -37,7 +37,7 @@
   - `src/color.rs`
   - `src/error.rs`
 - 当前测试状态：
-  - Rust 单测：25
+  - Rust 单测：41
   - Python parity 集成测试：1
   - `cargo test` 全通过
 
@@ -243,7 +243,7 @@
 - [x] 扩展基础观察者表示
 - [x] 实现 `xyzbar`
 - [x] 实现 `vlbar`
-- [ ] 实现 `vlbar_cie_mesopic`
+- [x] 实现 `vlbar_cie_mesopic`
 - [x] 将 `spd_to_power` 重构到统一积分框架
 - [x] 实现 `spd_to_ler`
 - [x] 实现 `spd_to_xyz`
@@ -252,7 +252,11 @@
 
 - 这里的 `cie_interp` 仍是“最小公共版”，尚未覆盖 LuxPy 的完整数据类型策略、Sprague、二次 / 三次外推、log 插值等全部语义。
 - `spd_normalize` 当前也先覆盖最常用单谱模式，已经能满足基础内核验收，但尚未完全复刻 LuxPy 的所有列表参数和外围行为。
-- `vlbar_cie_mesopic`、更全量 `_CMF` 集合以及更完整插值策略仍待补齐。
+- 更全量 `_CMF` 集合以及更完整插值策略仍待补齐。
+- 常用颜色空间当前已实现 `Yxy / Yuv / Lab / Luv / LMS / sRGB`。
+- `Lab / Luv` 当前先采用“显式白点输入”的 Rust API，后续再决定是否补充默认参考白点与 illuminant 封装层。
+- `LMS` 当前同时支持“显式 3x3 矩阵”与“基于 `Observer` 的默认矩阵”两层 API，后续新观察者接入时应沿用同一模式。
+- `sRGB` 当前按 LuxPy 的 IEC:61966 语义实现，保持 `XYZ -> sRGB` 输出 `0..255` 浮点 RGB，后续如需 UI / image pipeline 可再补 `u8` 包装层。
 
 P0 验收完成标志：
 
@@ -275,12 +279,12 @@ P0 验收完成标志：
 - [ ] 实现 `daylightlocus`
 - [ ] 实现 `daylightphase`
 - [ ] 实现 `cri_ref`
-- [ ] 实现 `XYZ <-> Yxy`
-- [ ] 实现 `XYZ <-> Yuv`
-- [ ] 实现 `XYZ <-> Lab`
-- [ ] 实现 `XYZ <-> Luv`
-- [ ] 实现 `XYZ <-> LMS`
-- [ ] 实现 `XYZ <-> sRGB`
+- [x] 实现 `XYZ <-> Yxy`
+- [x] 实现 `XYZ <-> Yuv`
+- [x] 实现 `XYZ <-> Lab`
+- [x] 实现 `XYZ <-> Luv`
+- [x] 实现 `XYZ <-> LMS`
+- [x] 实现 `XYZ <-> sRGB`
 - [ ] 选择一条主路径实现 `xyz_to_cct`
 - [ ] 实现 `cct_to_xyz`
 
@@ -288,6 +292,7 @@ P0 验收完成标志：
 
 - `xyz_to_cct` 不要一开始追平全部 Robertson / Ohno / Li / Zhang 分支
 - 先做一条稳定、可验收、可维护的主算法
+- 颜色空间转换层已开始收拢为统一 API，后续新增 `LMS / sRGB` 时应复用相同的显式参数风格或一次性升级默认白点策略，避免接口分裂。
 
 ### Phase P2: 色适应 + 色差
 

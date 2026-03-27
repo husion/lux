@@ -21,7 +21,14 @@ pub fn spd_to_xyz(
     let x_bar = observer.x_bar_spectrum()?.interpolate_linear(wavelengths)?;
     let y_bar = observer.vl_spectrum()?.interpolate_linear(wavelengths)?;
     let z_bar = observer.z_bar_spectrum()?.interpolate_linear(wavelengths)?;
-    integrate_xyz(spectrum, x_bar.values(), y_bar.values(), z_bar.values(), observer.k, relative)
+    integrate_xyz(
+        spectrum,
+        x_bar.values(),
+        y_bar.values(),
+        z_bar.values(),
+        observer.k,
+        relative,
+    )
 }
 
 pub fn spd_to_xyz_many(
@@ -142,17 +149,15 @@ pub fn spd_to_power(
 
 #[cfg(test)]
 mod tests {
-    use super::{spd_to_ler, spd_to_ler_many, spd_to_power, spd_to_xyz, spd_to_xyz_many, PowerType};
+    use super::{
+        spd_to_ler, spd_to_ler_many, spd_to_power, spd_to_xyz, spd_to_xyz_many, PowerType,
+    };
     use crate::color::Observer;
     use crate::spectrum::{SpectralMatrix, Spectrum};
 
     #[test]
     fn computes_radiometric_power() {
-        let spectrum = Spectrum::new(
-            vec![400.0, 410.0, 420.0],
-            vec![1.0, 2.0, 3.0],
-        )
-        .unwrap();
+        let spectrum = Spectrum::new(vec![400.0, 410.0, 420.0], vec![1.0, 2.0, 3.0]).unwrap();
         let power = spd_to_power(&spectrum, PowerType::Radiometric, None).unwrap();
         assert_eq!(power, 60.0);
     }
@@ -193,11 +198,8 @@ mod tests {
     #[test]
     fn computes_relative_xyz_for_multiple_spectra() {
         let observer = Observer::Cie1931_2.standard().unwrap();
-        let spectra = SpectralMatrix::new(
-            vec![555.0, 556.0],
-            vec![vec![1.0, 1.0], vec![2.0, 2.0]],
-        )
-        .unwrap();
+        let spectra =
+            SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap();
         let xyz = spd_to_xyz_many(&spectra, &observer, true).unwrap();
         assert_eq!(xyz.len(), 2);
         assert!((xyz[0][0] - 52.021_027_306_606_52).abs() < 1e-9);
@@ -215,11 +217,8 @@ mod tests {
     #[test]
     fn computes_ler_for_multiple_spectra() {
         let observer = Observer::Cie1931_2.standard().unwrap();
-        let spectra = SpectralMatrix::new(
-            vec![555.0, 556.0],
-            vec![vec![1.0, 1.0], vec![2.0, 2.0]],
-        )
-        .unwrap();
+        let spectra =
+            SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap();
         let ler = spd_to_ler_many(&spectra, &observer).unwrap();
         assert_eq!(ler.len(), 2);
         assert!((ler[0] - 682.953_062_906_7).abs() < 1e-9);

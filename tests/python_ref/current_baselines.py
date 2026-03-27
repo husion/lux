@@ -24,6 +24,41 @@ def main() -> None:
     print(f"xyzbar_1964_555={fmt_vec(xyzbar_1964[:, xyzbar_1964[0] == 555.0].ravel())}")
     print(f"vlbar_1964_555={fmt_vec(vlbar_1964[:, vlbar_1964[0] == 555.0].ravel())}")
     print(f"vlbar_1964_k={fmt_scalar(k_1964)}")
+    lmes_1, m_1 = lx.get_cie_mesopic_adaptation(1.0, SP=1.0)
+    vlbar_mesopic, k_mesopic = lx.vlbar_cie_mesopic(
+        m=[0.5, 1.0],
+        wl_new=np.array([555.0]),
+        out=2,
+    )
+    print(f"mesopic_lmes_sp_1={fmt_scalar(np.ravel(lmes_1)[0])}")
+    print(f"mesopic_m_sp_1={fmt_scalar(np.ravel(m_1)[0])}")
+    print(f"mesopic_vlbar_shape={vlbar_mesopic.shape[0]},{vlbar_mesopic.shape[1]}")
+    print(f"mesopic_vlbar_555={fmt_vec(vlbar_mesopic.ravel())}")
+    print(f"mesopic_k={fmt_vec(np.ravel(k_mesopic))}")
+    xyz_sample = np.array([[0.25, 0.5, 0.25]])
+    white_sample = np.array([[0.5, 0.5, 0.5]])
+    yxy_sample = lx.xyz_to_Yxy(xyz_sample)
+    yuv_sample = lx.xyz_to_Yuv(xyz_sample)
+    lab_sample = lx.xyz_to_lab(xyz_sample, xyzw=white_sample)
+    luv_sample = lx.xyz_to_luv(xyz_sample, xyzw=white_sample)
+    lms_1931 = lx.xyz_to_lms(xyz_sample, cieobs="1931_2")
+    lms_1964 = lx.xyz_to_lms(xyz_sample, cieobs="1964_10")
+    srgb_sample = lx.xyz_to_srgb(np.array([[20.0, 21.0, 22.0]]))
+    print(f"xyz_to_yxy={fmt_vec(yxy_sample.ravel())}")
+    print(f"yxy_to_xyz={fmt_vec(lx.Yxy_to_xyz(yxy_sample).ravel())}")
+    print(f"xyz_to_yuv={fmt_vec(yuv_sample.ravel())}")
+    print(f"yuv_to_xyz={fmt_vec(lx.Yuv_to_xyz(yuv_sample).ravel())}")
+    print(f"xyz_to_lab={fmt_vec(lab_sample.ravel())}")
+    print(f"lab_to_xyz={fmt_vec(lx.lab_to_xyz(lab_sample, xyzw=white_sample).ravel())}")
+    print(f"xyz_to_luv={fmt_vec(luv_sample.ravel())}")
+    print(f"luv_to_xyz={fmt_vec(lx.luv_to_xyz(luv_sample, xyzw=white_sample).ravel())}")
+    print(f"xyz_to_lms_1931={fmt_vec(lms_1931.ravel())}")
+    print(f"lms_to_xyz_1931={fmt_vec(lx.lms_to_xyz(lms_1931, cieobs='1931_2').ravel())}")
+    print(f"xyz_to_lms_1964={fmt_vec(lms_1964.ravel())}")
+    print(f"xyz_to_srgb={fmt_vec(srgb_sample.ravel())}")
+    print(
+        f"srgb_to_xyz={fmt_vec(lx.srgb_to_xyz(np.array([[64.0, 128.0, 192.0]])).ravel())}"
+    )
     print(
         "xyzbar_1931_interp="
         + fmt_vec(
