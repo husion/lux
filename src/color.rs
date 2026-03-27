@@ -1,5 +1,5 @@
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::Spectrum;
+use crate::spectrum::{SpectralMatrix, Spectrum};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Observer {
@@ -28,6 +28,24 @@ impl Observer {
                 683.599,
             ),
         }
+    }
+
+    pub fn xyzbar(self) -> LuxResult<SpectralMatrix> {
+        self.standard()?.xyz_spectra()
+    }
+
+    pub fn xyzbar_linear(self, target_wavelengths: &[f64]) -> LuxResult<SpectralMatrix> {
+        self.xyzbar()?.cie_interp_linear(target_wavelengths, false)
+    }
+
+    pub fn vlbar(self) -> LuxResult<(Spectrum, f64)> {
+        let observer = self.standard()?;
+        Ok((observer.vl_spectrum()?, observer.k))
+    }
+
+    pub fn vlbar_linear(self, target_wavelengths: &[f64]) -> LuxResult<(Spectrum, f64)> {
+        let (vl, k) = self.vlbar()?;
+        Ok((vl.cie_interp_linear(target_wavelengths, false)?, k))
     }
 }
 
@@ -87,6 +105,21 @@ impl TristimulusObserver {
     pub fn vl_spectrum(&self) -> LuxResult<Spectrum> {
         Spectrum::new(self.wavelengths.clone(), self.y_bar.clone())
     }
+
+    pub fn xyz_spectra(&self) -> LuxResult<SpectralMatrix> {
+        SpectralMatrix::new(
+            self.wavelengths.clone(),
+            vec![self.x_bar.clone(), self.y_bar.clone(), self.z_bar.clone()],
+        )
+    }
+
+    pub fn x_bar_spectrum(&self) -> LuxResult<Spectrum> {
+        Spectrum::new(self.wavelengths.clone(), self.x_bar.clone())
+    }
+
+    pub fn z_bar_spectrum(&self) -> LuxResult<Spectrum> {
+        Spectrum::new(self.wavelengths.clone(), self.z_bar.clone())
+    }
 }
 
 #[cfg(test)]
@@ -99,5 +132,30 @@ mod tests {
         assert_eq!(observer.wavelengths.first().copied(), Some(360.0));
         assert_eq!(observer.wavelengths.last().copied(), Some(830.0));
         assert_eq!(observer.wavelengths.len(), 471);
+    }
+
+    #[test]
+    fn exposes_xyzbar() {
+        let xyzbar = Observer::Cie1931_2.xyzbar().unwrap();
+        assert_eq!(xyzbar.wavelength_count(), 471);
+        assert_eq!(xyzbar.spectrum_count(), 3);
+    }
+
+    #[test]
+    fn exposes_vlbar_and_k() {
+        let (vl, k) = Observer::Cie1931_2.vlbar().unwrap();
+        assert_eq!(vl.wavelengths().len(), 471);
+        assert_eq!(vl.values()[195], 1.0);
+        assert_eq!(k, 683.002);
+    }
+
+    #[test]
+    fn interpolates_xyzbar_linearly() {
+        let xyzbar = Observer::Cie1931_2
+            .xyzbar_linear(&[554.5, 555.0, 555.5, 556.0])
+            .unwrap();
+        assert!((xyzbar.spectra()[0][0] - 0.504_010_7).abs() < 1e-9);
+        assert!((xyzbar.spectra()[1][1] - 1.0).abs() < 1e-12);
+        assert!((xyzbar.spectra()[2][3] - 0.005_303_6).abs() < 1e-9);
     }
 }

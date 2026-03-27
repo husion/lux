@@ -4,12 +4,30 @@
 
 ## 1. 当前仓库状态
 
-- Rust crate 当前只覆盖 `luxpy` 很小一层能力：
+- Rust crate 当前已完成一版 `P0` 基础数值内核，已具备：
   - 波长网格生成 `getwlr`
   - 波长间距计算 `getwld`
-  - `Spectrum` 基础数据模型
-  - 线性插值与线性外推
-  - `spd_to_power` 的 `ru / pu / qu`
+  - 单谱数据模型 `Spectrum`
+  - 批量谱数据模型 `SpectralMatrix`
+  - 最小版线性 `cie_interp`
+    - 线性插值
+    - 线性外推
+    - 可选负值裁剪
+  - 最小版 `spd_normalize`
+    - `max`
+    - `area`
+    - `lambda`
+    - `ru`
+    - `pu`
+    - `qu`
+  - 公开观察者 / CMF API
+    - `xyzbar`
+    - `vlbar`
+  - 基础积分链路
+    - `spd_to_power`
+    - `spd_to_xyz`
+    - `spd_to_ler`
+  - 上述积分链路均支持单谱，`spd_to_xyz` / `spd_to_ler` 已支持批量谱
   - 嵌入式标准观察者：
     - `1931_2`
     - `1964_10`
@@ -18,7 +36,10 @@
   - `src/photometry.rs`
   - `src/color.rs`
   - `src/error.rs`
-- 当前 `cargo test` 可通过。
+- 当前测试状态：
+  - Rust 单测：25
+  - Python parity 集成测试：1
+  - `cargo test` 全通过
 
 ## 2. luxpy 顶层探索结论
 
@@ -214,31 +235,37 @@
 
 计划：
 
-- [ ] 设计统一的单谱 / 多谱数据模型
-- [ ] 明确 `getwld` 的 Rust 语义
-- [ ] 重构波长网格与 spacing 表示
-- [ ] 实现 `cie_interp`
-- [ ] 实现 `spd_normalize`
-- [ ] 扩展 `_CMF` 数据与观察者表示
-- [ ] 实现 `xyzbar`
-- [ ] 实现 `vlbar`
+- [x] 设计统一的单谱 / 多谱数据模型
+- [x] 明确 `getwld` 的 Rust 语义
+- [x] 重构波长网格与 spacing 表示
+- [x] 实现最小版 `cie_interp`
+- [x] 实现最小版 `spd_normalize`
+- [x] 扩展基础观察者表示
+- [x] 实现 `xyzbar`
+- [x] 实现 `vlbar`
 - [ ] 实现 `vlbar_cie_mesopic`
-- [ ] 将 `spd_to_power` 重构到统一积分框架
-- [ ] 实现 `spd_to_ler`
-- [ ] 实现 `spd_to_xyz`
+- [x] 将 `spd_to_power` 重构到统一积分框架
+- [x] 实现 `spd_to_ler`
+- [x] 实现 `spd_to_xyz`
+
+当前说明：
+
+- 这里的 `cie_interp` 仍是“最小公共版”，尚未覆盖 LuxPy 的完整数据类型策略、Sprague、二次 / 三次外推、log 插值等全部语义。
+- `spd_normalize` 当前也先覆盖最常用单谱模式，已经能满足基础内核验收，但尚未完全复刻 LuxPy 的所有列表参数和外围行为。
+- `vlbar_cie_mesopic`、更全量 `_CMF` 集合以及更完整插值策略仍待补齐。
 
 P0 验收完成标志：
 
 - Rust 端可稳定对拍：
-  - `getwlr`
-  - `getwld`
-  - `cie_interp`
-  - `spd_normalize`
-  - `xyzbar`
-  - `vlbar`
-  - `spd_to_power`
-  - `spd_to_ler`
-  - `spd_to_xyz`
+  - [x] `getwlr`
+  - [x] `getwld`
+  - [x] 最小版 `cie_interp`
+  - [x] 最小版 `spd_normalize`
+  - [x] `xyzbar`
+  - [x] `vlbar`
+  - [x] `spd_to_power`
+  - [x] `spd_to_ler`
+  - [x] `spd_to_xyz`
 
 ### Phase P1: 参考光源 + 常用颜色空间 + CCT
 
@@ -339,10 +366,15 @@ P0 验收完成标志：
 
 ### 6.4 首批必须建立的 Python 参考基线
 
-- [ ] `getwlr`
-- [ ] `getwld`
-- [ ] `spd_to_power(ru/pu/qu)`
-- [ ] `spd_to_xyz`
+- [x] `getwlr`
+- [x] `getwld`
+- [x] `spd_to_power(ru/pu/qu)`
+- [x] `spd_to_xyz`
+- [x] `spd_to_ler`
+- [x] `xyzbar`
+- [x] `vlbar`
+- [x] 最小版 `cie_interp`
+- [x] 最小版 `spd_normalize`
 - [ ] `blackbody`
 - [ ] `daylightphase`
 - [ ] `cri_ref`
@@ -356,7 +388,13 @@ P0 验收完成标志：
 - `spd_to_power([[400,410,420],[1,2,3]], 'ru') = 60.0`
 - `spd_to_power([[555,556],[1,1]], 'pu', '1931_2') = 1365.9061258134`
 - `spd_to_power([[500,510],[1,1]], 'qu') = 5.084457733218137e19`
+- `spd_to_ler([[555,556],[1,1]], '1931_2') = 682.9530629067`
+- `spd_to_ler([[555,556],[1,1]], '1964_10') = 683.2161845600001`
 - `spd_to_xyz([[555,556],[1,1]], '1931_2') = [52.02102730660652, 100.0, 0.5527195523559263]`
+- `spd_to_xyz([[555,556],[1,1]], '1931_2', relative=False) = [710.558398692, 1365.9061258134, 7.549630224198]`
+- `spd_to_xyz([[555,556],[1,1]], '1964_10') = [62.535069638997825, 100.0, 0.09015048427119186]`
+- `xyzbar('1931_2')` 与 `vlbar('1931_2')` 已建立 555 nm 和线性重采样对拍基线
+- `xyzbar('1964_10')` 与 `vlbar('1964_10')` 已建立 555 nm 对拍基线
 - `xyz_to_cct([100,100,100]) ≈ (5455.5 K, -0.0044233)`
 - `blackbody(6500, wl=[360,365,1])` 已可生成参考谱
 - `daylightphase(6500, wl=[360,365,1])` 已可生成参考谱
@@ -366,14 +404,20 @@ P0 验收完成标志：
 
 近期不应同时铺开太多方向，建议严格按下面顺序推进：
 
-1. [ ] 重构 `Spectrum/SPD` 与批量谱抽象
-2. [ ] 实现 `cie_interp`
-3. [ ] 实现 `spd_normalize`
-4. [ ] 扩展 `_CMF` / `xyzbar` / `vlbar`
-5. [ ] 打通 `spd_to_xyz`
-6. [ ] 建立完整 Python 对拍基线
-7. [ ] 再进入 `blackbody/daylightphase/cri_ref`
+1. [x] 重构 `Spectrum/SPD` 与批量谱抽象
+2. [x] 实现最小版 `cie_interp`
+3. [x] 实现最小版 `spd_normalize`
+4. [x] 扩展 `_CMF` / `xyzbar` / `vlbar`
+5. [x] 打通 `spd_to_xyz`
+6. [x] 建立当前阶段 Python 对拍基线
+7. [ ] 进入 `blackbody/daylightphase/cri_ref`
 8. [ ] 然后进入颜色空间与 `xyz_to_cct`
+
+当前建议：
+
+- 下一阶段优先进入 `blackbody`
+- 之后按依赖顺序推进 `daylightphase` / `cri_ref`
+- 等参考光源稳定后，再进入颜色空间与 `xyz_to_cct`
 
 ## 9. 暂不做的事项
 

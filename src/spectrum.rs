@@ -1,4 +1,6 @@
+use crate::color::TristimulusObserver;
 use crate::error::{LuxError, LuxResult};
+use crate::photometry::{spd_to_power, PowerType};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WavelengthGrid {
@@ -25,6 +27,22 @@ impl WavelengthGrid {
 pub struct Spectrum {
     wavelengths: Vec<f64>,
     values: Vec<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpectralMatrix {
+    wavelengths: Vec<f64>,
+    spectra: Vec<Vec<f64>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SpectrumNormalization {
+    Max(f64),
+    Area(f64),
+    Lambda(f64),
+    Radiometric(f64),
+    Photometric(f64),
+    Quantal(f64),
 }
 
 impl Spectrum {
@@ -80,6 +98,22 @@ impl Spectrum {
         Spectrum::new(target_wavelengths.to_vec(), values)
     }
 
+    pub fn cie_interp_linear(
+        &self,
+        target_wavelengths: &[f64],
+        negative_values_allowed: bool,
+    ) -> LuxResult<Self> {
+        let mut interpolated = self.interpolate_linear(target_wavelengths)?;
+        if !negative_values_allowed {
+            for value in &mut interpolated.values {
+                if *value < 0.0 {
+                    *value = 0.0;
+                }
+            }
+        }
+        Ok(interpolated)
+    }
+
     fn interpolate_one_linear(&self, target: f64) -> f64 {
         let wavelengths = &self.wavelengths;
         let values = &self.values;
@@ -116,6 +150,132 @@ impl Spectrum {
                 target,
             )
         }
+    }
+
+    pub fn normalize(
+        &self,
+        mode: SpectrumNormalization,
+        observer: Option<&TristimulusObserver>,
+    ) -> LuxResult<Self> {
+        let scale = match mode {
+            SpectrumNormalization::Max(target_max) => {
+                target_max / self.values.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+            }
+            SpectrumNormalization::Area(target_area) => {
+                let area: f64 = self
+                    .values
+                    .iter()
+                    .zip(self.spacing()?.iter())
+                    .map(|(value, dl)| value * dl)
+                    .sum();
+                target_area / area
+            }
+            SpectrumNormalization::Lambda(target_wavelength) => {
+                let (index, _) = self
+                    .wavelengths
+                    .iter()
+                    .enumerate()
+                    .map(|(index, wavelength)| (index, (wavelength - target_wavelength).abs()))
+                    .min_by(|(_, lhs), (_, rhs)| lhs.partial_cmp(rhs).unwrap())
+                    .ok_or(LuxError::EmptyInput)?;
+                1.0 / self.values[index]
+            }
+            SpectrumNormalization::Radiometric(target_power) => {
+                target_power / spd_to_power(self, PowerType::Radiometric, None)?
+            }
+            SpectrumNormalization::Photometric(target_power) => {
+                target_power / spd_to_power(self, PowerType::Photometric, observer)?
+            }
+            SpectrumNormalization::Quantal(target_power) => {
+                target_power / spd_to_power(self, PowerType::Quantal, None)?
+            }
+        };
+
+        Spectrum::new(
+            self.wavelengths.clone(),
+            self.values.iter().map(|value| value * scale).collect(),
+        )
+    }
+}
+
+impl SpectralMatrix {
+    pub fn new(wavelengths: Vec<f64>, spectra: Vec<Vec<f64>>) -> LuxResult<Self> {
+        if wavelengths.is_empty() || spectra.is_empty() {
+            return Err(LuxError::EmptyInput);
+        }
+        if wavelengths
+            .windows(2)
+            .any(|pair| !(pair[1].is_finite() && pair[0].is_finite() && pair[1] > pair[0]))
+        {
+            return Err(LuxError::NonMonotonicWavelengths);
+        }
+        for values in &spectra {
+            if values.len() != wavelengths.len() {
+                return Err(LuxError::MismatchedLengths {
+                    wavelengths: wavelengths.len(),
+                    values: values.len(),
+                });
+            }
+        }
+
+        Ok(Self {
+            wavelengths,
+            spectra,
+        })
+    }
+
+    pub fn wavelengths(&self) -> &[f64] {
+        &self.wavelengths
+    }
+
+    pub fn spectra(&self) -> &[Vec<f64>] {
+        &self.spectra
+    }
+
+    pub fn spectrum_count(&self) -> usize {
+        self.spectra.len()
+    }
+
+    pub fn wavelength_count(&self) -> usize {
+        self.wavelengths.len()
+    }
+
+    pub fn spacing(&self) -> LuxResult<Vec<f64>> {
+        getwld(&self.wavelengths)
+    }
+
+    pub fn cie_interp_linear(
+        &self,
+        target_wavelengths: &[f64],
+        negative_values_allowed: bool,
+    ) -> LuxResult<Self> {
+        let mut spectra = Vec::with_capacity(self.spectra.len());
+        for values in &self.spectra {
+            let spectrum = Spectrum::new(self.wavelengths.clone(), values.clone())?;
+            let interpolated = spectrum.cie_interp_linear(target_wavelengths, negative_values_allowed)?;
+            spectra.push(interpolated.values().to_vec());
+        }
+        SpectralMatrix::new(target_wavelengths.to_vec(), spectra)
+    }
+
+    pub fn normalize_each(
+        &self,
+        modes: &[SpectrumNormalization],
+        observer: Option<&TristimulusObserver>,
+    ) -> LuxResult<Self> {
+        if modes.is_empty() {
+            return Err(LuxError::EmptyInput);
+        }
+
+        let mut spectra = Vec::with_capacity(self.spectra.len());
+        for (index, values) in self.spectra.iter().enumerate() {
+            let mode = modes.get(index).copied().unwrap_or(modes[0]);
+            let spectrum = Spectrum::new(self.wavelengths.clone(), values.clone())?;
+            let normalized = spectrum.normalize(mode, observer)?;
+            spectra.push(normalized.values().to_vec());
+        }
+
+        SpectralMatrix::new(self.wavelengths.clone(), spectra)
     }
 }
 
@@ -166,7 +326,8 @@ pub fn getwld(wavelengths: &[f64]) -> LuxResult<Vec<f64>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{getwld, getwlr, Spectrum, WavelengthGrid};
+    use super::{getwld, getwlr, SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid};
+    use crate::color::Observer;
 
     #[test]
     fn grid_matches_luxpy_style_range() {
@@ -193,5 +354,109 @@ mod tests {
             .interpolate_linear(&[395.0, 405.0, 420.0, 425.0])
             .unwrap();
         assert_eq!(resampled.values(), &[0.5, 1.5, 3.0, 3.5]);
+    }
+
+    #[test]
+    fn constructs_spectral_matrix() {
+        let matrix = SpectralMatrix::new(
+            vec![400.0, 410.0, 420.0],
+            vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]],
+        )
+        .unwrap();
+        assert_eq!(matrix.spectrum_count(), 2);
+        assert_eq!(matrix.wavelength_count(), 3);
+    }
+
+    #[test]
+    fn rejects_spectral_matrix_with_bad_row_length() {
+        let result = SpectralMatrix::new(
+            vec![400.0, 410.0, 420.0],
+            vec![vec![1.0, 2.0], vec![4.0, 5.0, 6.0]],
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpolates_spectral_matrix_linearly() {
+        let matrix = SpectralMatrix::new(
+            vec![400.0, 410.0, 420.0],
+            vec![vec![1.0, 2.0, 3.0], vec![2.0, 3.0, 4.0]],
+        )
+        .unwrap();
+        let resampled = matrix
+            .cie_interp_linear(&[395.0, 405.0, 420.0, 425.0], true)
+            .unwrap();
+        assert_eq!(resampled.spectra()[0], vec![0.5, 1.5, 3.0, 3.5]);
+        assert_eq!(resampled.spectra()[1], vec![1.5, 2.5, 4.0, 4.5]);
+    }
+
+    #[test]
+    fn clips_negative_values_when_requested() {
+        let spectrum = Spectrum::new(vec![400.0, 410.0], vec![1.0, 0.0]).unwrap();
+        let resampled = spectrum
+            .cie_interp_linear(&[420.0], false)
+            .unwrap();
+        assert_eq!(resampled.values(), &[0.0]);
+    }
+
+    #[test]
+    fn normalizes_spectrum_to_max() {
+        let spectrum = Spectrum::new(vec![400.0, 410.0, 420.0], vec![1.0, 2.0, 3.0]).unwrap();
+        let normalized = spectrum
+            .normalize(SpectrumNormalization::Max(2.0), None)
+            .unwrap();
+        assert_eq!(normalized.values(), &[2.0 / 3.0, 4.0 / 3.0, 2.0]);
+    }
+
+    #[test]
+    fn normalizes_spectrum_to_area() {
+        let spectrum = Spectrum::new(vec![400.0, 410.0, 420.0], vec![1.0, 2.0, 3.0]).unwrap();
+        let normalized = spectrum
+            .normalize(SpectrumNormalization::Area(1.0), None)
+            .unwrap();
+        assert_eq!(
+            normalized.values(),
+            &[1.0 / 60.0, 2.0 / 60.0, 3.0 / 60.0]
+        );
+    }
+
+    #[test]
+    fn normalizes_spectrum_to_lambda() {
+        let spectrum = Spectrum::new(vec![400.0, 410.0, 420.0], vec![1.0, 2.0, 3.0]).unwrap();
+        let normalized = spectrum
+            .normalize(SpectrumNormalization::Lambda(410.0), None)
+            .unwrap();
+        assert_eq!(normalized.values(), &[0.5, 1.0, 1.5]);
+    }
+
+    #[test]
+    fn normalizes_spectrum_to_photometric_power() {
+        let observer = Observer::Cie1931_2.standard().unwrap();
+        let spectrum = Spectrum::new(vec![555.0, 556.0], vec![1.0, 1.0]).unwrap();
+        let normalized = spectrum
+            .normalize(SpectrumNormalization::Photometric(1000.0), Some(&observer))
+            .unwrap();
+        assert!((normalized.values()[0] - 0.732_114_734_022_806_9).abs() < 1e-12);
+        assert!((normalized.values()[1] - 0.732_114_734_022_806_9).abs() < 1e-12);
+    }
+
+    #[test]
+    fn normalizes_each_spectrum_in_matrix() {
+        let matrix = SpectralMatrix::new(
+            vec![400.0, 410.0, 420.0],
+            vec![vec![1.0, 2.0, 3.0], vec![2.0, 4.0, 6.0]],
+        )
+        .unwrap();
+        let normalized = matrix
+            .normalize_each(
+                &[SpectrumNormalization::Max(2.0), SpectrumNormalization::Area(1.0)],
+                None,
+            )
+            .unwrap();
+        assert_eq!(normalized.spectra()[0], vec![2.0 / 3.0, 4.0 / 3.0, 2.0]);
+        assert_eq!(
+            normalized.spectra()[1],
+            vec![2.0 / 120.0, 4.0 / 120.0, 6.0 / 120.0]
+        );
     }
 }
