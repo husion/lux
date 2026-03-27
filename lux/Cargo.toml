@@ -1,0 +1,12 @@
+[package]
+name = "lux"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Pure Rust lighting and color science library inspired by LuxPy"
+
+[lib]
+name = "lux"
+path = "src/lib.rs"
+
+[dependencies]
