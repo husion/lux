@@ -1,0 +1,389 @@
+# Lux Pure Rust Refactor TODO
+
+本文档整理当前对 `luxpy` 的探索结论、纯 Rust 重构优先级、阶段目标与验收要求，作为后续执行参考。
+
+## 1. 当前仓库状态
+
+- Rust crate 当前只覆盖 `luxpy` 很小一层能力：
+  - 波长网格生成 `getwlr`
+  - 波长间距计算 `getwld`
+  - `Spectrum` 基础数据模型
+  - 线性插值与线性外推
+  - `spd_to_power` 的 `ru / pu / qu`
+  - 嵌入式标准观察者：
+    - `1931_2`
+    - `1964_10`
+- 当前相关文件：
+  - `src/spectrum.rs`
+  - `src/photometry.rs`
+  - `src/color.rs`
+  - `src/error.rs`
+- 当前 `cargo test` 可通过。
+
+## 2. luxpy 顶层探索结论
+
+`luxpy` 顶层入口在 `luxpy/luxpy/__init__.py`，实际暴露的是一个较完整的照明与色科学计算平台，不只是几个基础函数。
+
+### 2.1 顶层核心计算域
+
+- 光谱基础
+  - `getwlr`
+  - `getwld`
+  - `spd_normalize`
+  - `cie_interp`
+  - `spd`
+  - `SPD`
+- 标准观察者 / CMF
+  - `_CMF`
+  - `xyzbar`
+  - `vlbar`
+  - `vlbar_cie_mesopic`
+- SPD 积分链路
+  - `spd_to_xyz`
+  - `spd_to_ler`
+  - `spd_to_power`
+- 参考光源
+  - `blackbody`
+  - `daylightlocus`
+  - `daylightphase`
+  - `cri_ref`
+- CCT / Duv
+  - `xyz_to_cct`
+  - `cct_to_xyz`
+- 常用颜色空间变换
+  - `XYZ <-> Yxy`
+  - `XYZ <-> Yuv`
+  - `XYZ <-> Lab`
+  - `XYZ <-> Luv`
+  - `XYZ <-> LMS`
+  - `XYZ <-> sRGB`
+- 色差
+  - `deltaE`
+
+### 2.2 色貌模型
+
+`luxpy.color.cam` 是一个完整子系统，包含：
+
+- CIECAM02
+- CAM16
+- CAM02-UCS / CAM16-UCS
+- CAM15u
+- CAM18sl
+- ZCAM / Jabz
+- SWW16
+- 大量 `xyz_to_jab*` / `*_to_xyz` wrapper
+
+结论：色貌模型必须晚于基础 XYZ、CAT、白点、观察条件建模。
+
+### 2.3 色适应
+
+`luxpy.color.cat` 支持多种 CAT：
+
+- HPE
+- CAT02
+- CAT16
+- Bradford
+- Sharp
+- CMCCAT2000
+- Kries / Judd / Bianco 等
+
+核心能力是对应色计算与适应度计算。
+
+### 2.4 标准观察者与 CMF
+
+`luxpy._CMF['types']` 当前包含：
+
+- `1931_2`
+- `1964_10`
+- `2006_2`
+- `2006_10`
+- `2015_2`
+- `2015_10`
+- `1931_2_judd1951`
+- `1931_2_juddvos1978`
+- `1951_20_scotopic`
+- `cie_std_dev_obs_f1`
+
+每套不仅有 `bar`，还有：
+
+- `K`
+- `M`
+- `N`
+
+结论：Rust 端后续不能把观察者仅当作三列 CMF 数据，还要考虑附属常数与矩阵。
+
+### 2.5 工具箱层能力
+
+顶层还会挂载多个 toolbox 模块：
+
+- `photbiochem`
+- `indvcmf`
+- `spdbuild`
+- `hypspcim`
+- `iolidfiles`
+- `spectro`
+- `rgb2spec`
+- `dispcal`
+- `sherbrooke_spectral_indices`
+- `spectral_mismatch_and_uncertainty`
+
+说明：
+
+- `hypspcim` 对应高光谱图像模拟
+- `photbiochem` 对应 alpha-opic、EDI、DER、ELR、蓝光危害、昼夜节律
+- `indvcmf` 对应个体观察者模型
+- `dispcal` / `spectro` / `iolidfiles` 更像外围工程工具链
+
+## 3. 已识别的兼容性风险
+
+### 3.1 `getwld()` 返回类型差异
+
+`luxpy.getwld()`：
+
+- 等间距波长时返回标量
+- 非等间距时返回数组
+
+当前 Rust `getwld()`：
+
+- 一律返回 `Vec<f64>`
+
+结论：需要尽早确定 Rust API 策略：
+
+- 方案 A：内部统一表示，外部 API 不完全仿 LuxPy
+- 方案 B：外部接口尽量兼容 LuxPy 语义
+
+该决策会影响后续：
+
+- 积分
+- 插值
+- 归一化
+- 批量谱表示
+
+### 3.2 单谱 / 多谱表示差异
+
+`luxpy` 大量函数接受 `(N+1, M)` 形式矩阵：
+
+- 第 0 行是波长
+- 后续每一行是一条光谱
+
+当前 Rust 偏向单条 `Spectrum`。
+
+结论：P0 阶段必须设计统一的单谱与批量谱抽象。
+
+### 3.3 插值语义复杂
+
+`cie_interp()` 不只是简单线性插值，还包括：
+
+- 按数据类型选择默认插值方法
+  - `spd`
+  - `cmf`
+  - `rfl`
+  - `none`
+- 外推策略
+- 是否允许负值
+- 可选 Sprague / cubic / quadratic / linear
+- 对数域插值 / 外推选项
+
+结论：该函数应视为独立基础设施，不应作为零散 helper 实现。
+
+## 4. 重构优先级矩阵
+
+| 功能域 | 代表功能 | 依赖 | Python 对拍难度 | Rust 实现难度 | 优先级 | 说明 |
+|---|---|---|---|---|---|---|
+| 光谱底座 | `Spectrum/SPD`、`getwlr`、`getwld`、批量谱数据结构 | 无 | 低 | 中 | P0 | 所有后续能力的承载层 |
+| 光谱插值与归一化 | `cie_interp`、`spd_normalize` | 光谱底座 | 中 | 高 | P0 | `luxpy` 核心语义之一 |
+| 标准观察者与 CMF 数据 | `_CMF`、`xyzbar`、`vlbar`、`vlbar_cie_mesopic` | 光谱底座、插值 | 低 | 中 | P0 | 后续 CCT/CAT/CAM/CRI 都依赖 |
+| 基础积分链路 | `spd_to_power`、`spd_to_ler`、`spd_to_xyz` | 上述全部 | 低到中 | 中 | P0 | 核心数值计算心脏 |
+| 参考光源 | `blackbody`、`daylightlocus`、`daylightphase`、`cri_ref` | `spd_to_xyz`、CMF、插值 | 中 | 中到高 | P1 | 功能价值高，也是 CRI 基础 |
+| 常用颜色空间变换 | `XYZ<->Yxy/Yuv/Lab/Luv/LMS/sRGB` | `spd_to_xyz`、白点/CMF | 低 | 中 | P1 | 使用频率高 |
+| CCT / Duv | `xyz_to_cct`、`cct_to_xyz` | `spd_to_xyz`、颜色空间、参考光源 | 中到高 | 高 | P1 | 建议先做一条主算法 |
+| 色适应 | `cat.apply()`、适应度函数 | XYZ 变换、观察者矩阵 | 中 | 中到高 | P2 | 是 CAM 前置 |
+| 色差 | `deltaE` | Lab/UCS 等颜色空间 | 低 | 中 | P2 | 依赖清晰，可中期交付 |
+| 色貌模型 | CIECAM02、CAM16、CAM-UCS、ZCAM、CAM15u、CAM18sl | CAT、XYZ、观察条件 | 高 | 很高 | P3 | 体系大，不宜过早展开 |
+| 显色评价 | `cri`、TM-30、`Rf/Rg`、CIE Ra | 参考光源、XYZ、色空间、CAT、数据库 | 高 | 很高 | P3 | 强依赖全链路稳定 |
+| 光生物与节律 | `photbiochem`、alpha-opic、EDI、DER、ELR、BLH | SPD 积分、作用谱数据库 | 中 | 中 | P3 | 独立性较好，可后置并行 |
+| 个体观察者模型 | `indvcmf` | CMF、矩阵、模型参数 | 高 | 高 | P4 | 研究型扩展，后置 |
+| 高光谱图像 | `hypspcim` | 光谱底座、反射率库、颜色变换 | 高 | 很高 | P4 | 工程量大，后置 |
+| 外围工具链 | `dispcal`、`rgb2spec`、`spectro`、`iolidfiles` | 各自独立 | 高 | 很高 | P4 | 更适合后续独立 crate / 工具层 |
+
+## 5. 分阶段执行计划
+
+### Phase P0: 基础数值内核
+
+目标：形成可承载 `luxpy` 核心光谱数值语义的 Rust 底座。
+
+计划：
+
+- [ ] 设计统一的单谱 / 多谱数据模型
+- [ ] 明确 `getwld` 的 Rust 语义
+- [ ] 重构波长网格与 spacing 表示
+- [ ] 实现 `cie_interp`
+- [ ] 实现 `spd_normalize`
+- [ ] 扩展 `_CMF` 数据与观察者表示
+- [ ] 实现 `xyzbar`
+- [ ] 实现 `vlbar`
+- [ ] 实现 `vlbar_cie_mesopic`
+- [ ] 将 `spd_to_power` 重构到统一积分框架
+- [ ] 实现 `spd_to_ler`
+- [ ] 实现 `spd_to_xyz`
+
+P0 验收完成标志：
+
+- Rust 端可稳定对拍：
+  - `getwlr`
+  - `getwld`
+  - `cie_interp`
+  - `spd_normalize`
+  - `xyzbar`
+  - `vlbar`
+  - `spd_to_power`
+  - `spd_to_ler`
+  - `spd_to_xyz`
+
+### Phase P1: 参考光源 + 常用颜色空间 + CCT
+
+计划：
+
+- [ ] 实现 `blackbody`
+- [ ] 实现 `daylightlocus`
+- [ ] 实现 `daylightphase`
+- [ ] 实现 `cri_ref`
+- [ ] 实现 `XYZ <-> Yxy`
+- [ ] 实现 `XYZ <-> Yuv`
+- [ ] 实现 `XYZ <-> Lab`
+- [ ] 实现 `XYZ <-> Luv`
+- [ ] 实现 `XYZ <-> LMS`
+- [ ] 实现 `XYZ <-> sRGB`
+- [ ] 选择一条主路径实现 `xyz_to_cct`
+- [ ] 实现 `cct_to_xyz`
+
+说明：
+
+- `xyz_to_cct` 不要一开始追平全部 Robertson / Ohno / Li / Zhang 分支
+- 先做一条稳定、可验收、可维护的主算法
+
+### Phase P2: 色适应 + 色差
+
+计划：
+
+- [ ] 实现 `cat.apply()` 主路径
+- [ ] 实现适应度计算
+- [ ] 实现基础 CAT 变换族
+  - [ ] Bradford
+  - [ ] CAT02
+  - [ ] CAT16
+- [ ] 实现 `deltaE`
+
+### Phase P3: CAM + CRI + photobiochem
+
+计划：
+
+- [ ] 实现 CIECAM02
+- [ ] 实现 CAM16
+- [ ] 实现 CAM02-UCS / CAM16-UCS
+- [ ] 实现部分 `xyz_to_jab*` wrapper
+- [ ] 实现 CIE Ra
+- [ ] 实现 CIE Rf
+- [ ] 实现 IES TM-30 的核心数值
+- [ ] 实现 `photbiochem` 基础能力
+  - [ ] alpha-opic irradiance
+  - [ ] EDI
+  - [ ] DER
+  - [ ] ELR
+  - [ ] blue light hazard
+
+### Phase P4: 高级扩展与工具箱
+
+计划：
+
+- [ ] `indvcmf`
+- [ ] `hypspcim`
+- [ ] `dispcal`
+- [ ] `rgb2spec`
+- [ ] `spectro`
+- [ ] `iolidfiles`
+- [ ] `spectral_mismatch_and_uncertainty`
+
+## 6. Python 对拍验收要求
+
+以后每个功能都必须按“双轨验收”执行：
+
+- Rust 单元测试 / 集成测试
+- Python `luxpy` 对拍
+
+### 6.1 对拍原则
+
+- 每个功能至少覆盖：
+  - 固定教科书样例
+  - 边界样例
+  - 批量 / 矩阵样例
+- 不只比单个输出值，要比一组固定 case
+- 对拍脚本统一使用：
+  - `luxpy/.venv/bin/python`
+- 对拍环境统一设置：
+  - `MPLCONFIGDIR=/tmp/mpl`
+
+### 6.2 建议目录
+
+- `tests/python_ref/`
+  - Python 参考计算脚本
+- `tests/parity/`
+  - Rust 对拍测试
+
+### 6.3 误差建议
+
+- 基础积分 / 颜色空间：
+  - 目标误差优先控制在 `1e-9` 到 `1e-6`
+- CCT / CAM / CRI：
+  - 根据算法稳定性单独设阈值
+
+### 6.4 首批必须建立的 Python 参考基线
+
+- [ ] `getwlr`
+- [ ] `getwld`
+- [ ] `spd_to_power(ru/pu/qu)`
+- [ ] `spd_to_xyz`
+- [ ] `blackbody`
+- [ ] `daylightphase`
+- [ ] `cri_ref`
+
+## 7. 已确认的 Python 参考值
+
+以下结果已通过本地 `luxpy` 虚拟环境确认，可作为初始 sanity check：
+
+- `getwld([400,410,420]) = 10.0`
+- `getwld([400,410,430]) = [10.0, 15.0, 20.0]`
+- `spd_to_power([[400,410,420],[1,2,3]], 'ru') = 60.0`
+- `spd_to_power([[555,556],[1,1]], 'pu', '1931_2') = 1365.9061258134`
+- `spd_to_power([[500,510],[1,1]], 'qu') = 5.084457733218137e19`
+- `spd_to_xyz([[555,556],[1,1]], '1931_2') = [52.02102730660652, 100.0, 0.5527195523559263]`
+- `xyz_to_cct([100,100,100]) ≈ (5455.5 K, -0.0044233)`
+- `blackbody(6500, wl=[360,365,1])` 已可生成参考谱
+- `daylightphase(6500, wl=[360,365,1])` 已可生成参考谱
+- `cri_ref([3000,6500], wl=[360,365,1])` 已可生成参考谱
+
+## 8. 建议的近期执行顺序
+
+近期不应同时铺开太多方向，建议严格按下面顺序推进：
+
+1. [ ] 重构 `Spectrum/SPD` 与批量谱抽象
+2. [ ] 实现 `cie_interp`
+3. [ ] 实现 `spd_normalize`
+4. [ ] 扩展 `_CMF` / `xyzbar` / `vlbar`
+5. [ ] 打通 `spd_to_xyz`
+6. [ ] 建立完整 Python 对拍基线
+7. [ ] 再进入 `blackbody/daylightphase/cri_ref`
+8. [ ] 然后进入颜色空间与 `xyz_to_cct`
+
+## 9. 暂不做的事项
+
+在基础内核稳定前，暂不优先处理：
+
+- 全量 CAM 族
+- 全量 CRI / TM-30 图形输出
+- 高光谱图像模拟
+- 仪器接口
+- 显示器校准
+- 立体显示 / VR viewer
+
+这些都依赖更底层的正确性，过早进入会明显放大验证成本。
