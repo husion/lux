@@ -47,11 +47,11 @@ const CIERA_MIX_RANGE: [f64; 2] = [5000.0, 5000.0];
 const CCT_SEARCH_MIN: f64 = 1000.0;
 const CCT_SEARCH_MAX: f64 = 100_000.0;
 const CCT_SEARCH_SAMPLES: usize = 256;
-const CIE_A_CSV: &str = include_str!("../luxpy/luxpy/data/spds/CIE_A.csv");
-const CIE_D65_CSV: &str = include_str!("../luxpy/luxpy/data/spds/CIE_D65.csv");
-const CIE_F_SERIES_CSV: &str = include_str!("../luxpy/luxpy/data/spds/CIE_F_1to12_1nm.csv");
+const CIE_A_CSV: &str = include_str!("../data/spds/CIE_A.csv");
+const CIE_D65_CSV: &str = include_str!("../data/spds/CIE_D65.csv");
+const CIE_F_SERIES_CSV: &str = include_str!("../data/spds/CIE_F_1to12_1nm.csv");
 const CIE_LED_SERIES_CSV: &str =
-    include_str!("../luxpy/luxpy/data/spds/CIE_LED_B1toB5_BH1_RGB1_V1_V2.csv");
+    include_str!("../data/spds/CIE_LED_B1toB5_BH1_RGB1_V1_V2.csv");
 const LED_NAMES: [&str; 9] = [
     "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5", "LED_BH1", "LED_RGB1", "LED_V1", "LED_V2",
 ];
