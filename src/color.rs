@@ -22,6 +22,45 @@ pub struct MesopicLuminousEfficiency {
     pub k_mesopic: Vec<f64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tristimulus {
+    values: [f64; 3],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TristimulusSet {
+    values: Vec<[f64; 3]>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeltaEFormula {
+    Cie76,
+    Ciede2000,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatTransform {
+    Bradford,
+    Cat02,
+    Cat16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatSurround {
+    Average,
+    Dim,
+    Dark,
+    Display,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatMode {
+    OneStep,
+    SourceToBaseline,
+    BaselineToTarget,
+    TwoStep,
+}
+
 pub type Matrix3 = [[f64; 3]; 3];
 
 const EPSILON: f64 = 1e-15;
@@ -93,6 +132,420 @@ impl Observer {
                 ],
                 [0.0, 0.0, 0.465_792_338_736_113],
             ]),
+        }
+    }
+}
+
+impl Tristimulus {
+    pub fn new(values: [f64; 3]) -> Self {
+        Self { values }
+    }
+
+    pub fn values(self) -> [f64; 3] {
+        self.values
+    }
+
+    pub fn xyz_to_yxy(self) -> Self {
+        Self::new(xyz_to_yxy(self.values))
+    }
+
+    pub fn yxy_to_xyz(self) -> Self {
+        Self::new(yxy_to_xyz(self.values))
+    }
+
+    pub fn xyz_to_yuv(self) -> Self {
+        Self::new(xyz_to_yuv(self.values))
+    }
+
+    pub fn yuv_to_xyz(self) -> Self {
+        Self::new(yuv_to_xyz(self.values))
+    }
+
+    pub fn xyz_to_lab(self, white_point: [f64; 3]) -> Self {
+        Self::new(xyz_to_lab(self.values, white_point))
+    }
+
+    pub fn lab_to_xyz(self, white_point: [f64; 3]) -> Self {
+        Self::new(lab_to_xyz(self.values, white_point))
+    }
+
+    pub fn xyz_to_luv(self, white_point: [f64; 3]) -> Self {
+        Self::new(xyz_to_luv(self.values, white_point))
+    }
+
+    pub fn luv_to_xyz(self, white_point: [f64; 3]) -> Self {
+        Self::new(luv_to_xyz(self.values, white_point))
+    }
+
+    pub fn xyz_to_lms(self, observer: Observer) -> LuxResult<Self> {
+        Ok(Self::new(xyz_to_lms(self.values, observer)?))
+    }
+
+    pub fn lms_to_xyz(self, observer: Observer) -> LuxResult<Self> {
+        Ok(Self::new(lms_to_xyz(self.values, observer)?))
+    }
+
+    pub fn xyz_to_srgb(self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
+        Self::new(xyz_to_srgb(self.values, gamma, offset, use_linear_part))
+    }
+
+    pub fn srgb_to_xyz(self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
+        Self::new(srgb_to_xyz(self.values, gamma, offset, use_linear_part))
+    }
+
+    pub fn cat_apply(
+        self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        transform: CatTransform,
+        degree_of_adaptation: f64,
+    ) -> LuxResult<Self> {
+        Ok(Self::new(cat_apply(
+            self.values,
+            source_white,
+            target_white,
+            transform,
+            degree_of_adaptation,
+        )?))
+    }
+
+    pub fn cat_apply_mode(
+        self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        baseline_white: Option<[f64; 3]>,
+        transform: CatTransform,
+        mode: CatMode,
+        degrees_of_adaptation: [f64; 2],
+    ) -> LuxResult<Self> {
+        Ok(Self::new(cat_apply_mode(
+            self.values,
+            source_white,
+            target_white,
+            baseline_white,
+            transform,
+            mode,
+            degrees_of_adaptation,
+        )?))
+    }
+
+    pub fn cat_apply_with_conditions(
+        self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        transform: CatTransform,
+        surround: CatSurround,
+        adapting_luminance: f64,
+    ) -> LuxResult<Self> {
+        Ok(Self::new(cat_apply_with_conditions(
+            self.values,
+            source_white,
+            target_white,
+            transform,
+            surround,
+            adapting_luminance,
+        )?))
+    }
+
+    pub fn delta_e(self, other: Self, white_point: [f64; 3], formula: DeltaEFormula) -> f64 {
+        delta_e(self.values, other.values, white_point, formula)
+    }
+}
+
+impl From<[f64; 3]> for Tristimulus {
+    fn from(values: [f64; 3]) -> Self {
+        Self::new(values)
+    }
+}
+
+impl From<Tristimulus> for [f64; 3] {
+    fn from(value: Tristimulus) -> Self {
+        value.values
+    }
+}
+
+impl TristimulusSet {
+    pub fn new(values: Vec<[f64; 3]>) -> Self {
+        Self { values }
+    }
+
+    pub fn from_single(value: Tristimulus) -> Self {
+        Self::new(vec![value.values()])
+    }
+
+    pub fn values(&self) -> &[[f64; 3]] {
+        &self.values
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Tristimulus> + '_ {
+        self.values.iter().copied().map(Tristimulus::new)
+    }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn into_vec(self) -> Vec<[f64; 3]> {
+        self.values
+    }
+
+    pub fn xyz_to_yxy(&self) -> Self {
+        Self::new(self.values.iter().copied().map(xyz_to_yxy).collect())
+    }
+
+    pub fn yxy_to_xyz(&self) -> Self {
+        Self::new(self.values.iter().copied().map(yxy_to_xyz).collect())
+    }
+
+    pub fn xyz_to_yuv(&self) -> Self {
+        Self::new(self.values.iter().copied().map(xyz_to_yuv).collect())
+    }
+
+    pub fn yuv_to_xyz(&self) -> Self {
+        Self::new(self.values.iter().copied().map(yuv_to_xyz).collect())
+    }
+
+    pub fn xyz_to_lab(&self, white_point: [f64; 3]) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| xyz_to_lab(value, white_point))
+                .collect(),
+        )
+    }
+
+    pub fn lab_to_xyz(&self, white_point: [f64; 3]) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| lab_to_xyz(value, white_point))
+                .collect(),
+        )
+    }
+
+    pub fn xyz_to_luv(&self, white_point: [f64; 3]) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| xyz_to_luv(value, white_point))
+                .collect(),
+        )
+    }
+
+    pub fn luv_to_xyz(&self, white_point: [f64; 3]) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| luv_to_xyz(value, white_point))
+                .collect(),
+        )
+    }
+
+    pub fn xyz_to_lms(&self, observer: Observer) -> LuxResult<Self> {
+        Ok(Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| xyz_to_lms(value, observer))
+                .collect::<LuxResult<Vec<_>>>()?,
+        ))
+    }
+
+    pub fn lms_to_xyz(&self, observer: Observer) -> LuxResult<Self> {
+        Ok(Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| lms_to_xyz(value, observer))
+                .collect::<LuxResult<Vec<_>>>()?,
+        ))
+    }
+
+    pub fn xyz_to_srgb(&self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| xyz_to_srgb(value, gamma, offset, use_linear_part))
+                .collect(),
+        )
+    }
+
+    pub fn srgb_to_xyz(&self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| srgb_to_xyz(value, gamma, offset, use_linear_part))
+                .collect(),
+        )
+    }
+
+    pub fn cat_apply(
+        &self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        transform: CatTransform,
+        degree_of_adaptation: f64,
+    ) -> LuxResult<Self> {
+        Ok(Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| {
+                    cat_apply(
+                        value,
+                        source_white,
+                        target_white,
+                        transform,
+                        degree_of_adaptation,
+                    )
+                })
+                .collect::<LuxResult<Vec<_>>>()?,
+        ))
+    }
+
+    pub fn cat_apply_mode(
+        &self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        baseline_white: Option<[f64; 3]>,
+        transform: CatTransform,
+        mode: CatMode,
+        degrees_of_adaptation: [f64; 2],
+    ) -> LuxResult<Self> {
+        Ok(Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| {
+                    cat_apply_mode(
+                        value,
+                        source_white,
+                        target_white,
+                        baseline_white,
+                        transform,
+                        mode,
+                        degrees_of_adaptation,
+                    )
+                })
+                .collect::<LuxResult<Vec<_>>>()?,
+        ))
+    }
+
+    pub fn cat_apply_with_conditions(
+        &self,
+        source_white: [f64; 3],
+        target_white: [f64; 3],
+        transform: CatTransform,
+        surround: CatSurround,
+        adapting_luminance: f64,
+    ) -> LuxResult<Self> {
+        Ok(Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(|value| {
+                    cat_apply_with_conditions(
+                        value,
+                        source_white,
+                        target_white,
+                        transform,
+                        surround,
+                        adapting_luminance,
+                    )
+                })
+                .collect::<LuxResult<Vec<_>>>()?,
+        ))
+    }
+
+    pub fn delta_e(
+        &self,
+        other: &Self,
+        white_point: [f64; 3],
+        formula: DeltaEFormula,
+    ) -> LuxResult<Vec<f64>> {
+        if self.len() != other.len() {
+            return Err(LuxError::MismatchedLengths {
+                wavelengths: self.len(),
+                values: other.len(),
+            });
+        }
+
+        Ok(self
+            .values
+            .iter()
+            .copied()
+            .zip(other.values.iter().copied())
+            .map(|(left, right)| delta_e(left, right, white_point, formula))
+            .collect())
+    }
+}
+
+impl From<Vec<[f64; 3]>> for TristimulusSet {
+    fn from(values: Vec<[f64; 3]>) -> Self {
+        Self::new(values)
+    }
+}
+
+impl From<Tristimulus> for TristimulusSet {
+    fn from(value: Tristimulus) -> Self {
+        Self::from_single(value)
+    }
+}
+
+impl FromIterator<Tristimulus> for TristimulusSet {
+    fn from_iter<T: IntoIterator<Item = Tristimulus>>(iter: T) -> Self {
+        Self::new(iter.into_iter().map(Tristimulus::values).collect())
+    }
+}
+
+impl CatTransform {
+    pub fn matrix(self) -> Matrix3 {
+        match self {
+            Self::Bradford => [
+                [0.8951, 0.2664, -0.1614],
+                [-0.7502, 1.7135, 0.0367],
+                [0.0389, -0.0685, 1.0296],
+            ],
+            Self::Cat02 => [
+                [0.7328, 0.4296, -0.1624],
+                [-0.7036, 1.6975, 0.0061],
+                [0.0030, 0.0136, 0.9834],
+            ],
+            Self::Cat16 => [
+                [0.401288, 0.650173, -0.051461],
+                [-0.250268, 1.204414, 0.045854],
+                [-0.002079, 0.048952, 0.953127],
+            ],
+        }
+    }
+}
+
+impl CatSurround {
+    pub fn factor(self) -> f64 {
+        match self {
+            Self::Average => 1.0,
+            Self::Dim => 0.9,
+            Self::Dark => 0.8,
+            Self::Display => 0.0,
+        }
+    }
+}
+
+impl CatMode {
+    pub fn default_baseline_white(self) -> [f64; 3] {
+        match self {
+            Self::SourceToBaseline | Self::BaselineToTarget | Self::TwoStep => [100.0, 100.0, 100.0],
+            Self::OneStep => [100.0, 100.0, 100.0],
         }
     }
 }
@@ -228,6 +681,35 @@ fn clamp(value: f64, min: f64, max: f64) -> f64 {
     value.max(min).min(max)
 }
 
+fn degrees_to_radians(value: f64) -> f64 {
+    value * std::f64::consts::PI / 180.0
+}
+
+fn hue_angle_degrees(a: f64, b: f64) -> f64 {
+    let angle = b.atan2(a).to_degrees();
+    if angle < 0.0 {
+        angle + 360.0
+    } else {
+        angle
+    }
+}
+
+fn validate_xyz_triplet(xyz: [f64; 3], label: &'static str) -> LuxResult<()> {
+    if xyz.iter().all(|value| value.is_finite()) {
+        Ok(())
+    } else {
+        Err(LuxError::InvalidInput(label))
+    }
+}
+
+fn validate_degree(value: f64, label: &'static str) -> LuxResult<()> {
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        Err(LuxError::InvalidInput(label))
+    } else {
+        Ok(())
+    }
+}
+
 fn invert_matrix3(matrix: Matrix3) -> Matrix3 {
     let a = matrix[0][0];
     let b = matrix[0][1];
@@ -325,6 +807,149 @@ pub fn lms_to_xyz(lms: [f64; 3], observer: Observer) -> LuxResult<[f64; 3]> {
     Ok(lms_to_xyz_with_matrix(lms, observer.xyz_to_lms_matrix()?))
 }
 
+// Chromatic adaptation.
+
+pub fn cat_apply(
+    xyz: [f64; 3],
+    source_white: [f64; 3],
+    target_white: [f64; 3],
+    transform: CatTransform,
+    degree_of_adaptation: f64,
+) -> LuxResult<[f64; 3]> {
+    validate_xyz_triplet(xyz, "xyz values must be finite")?;
+    validate_xyz_triplet(source_white, "source white values must be finite")?;
+    validate_xyz_triplet(target_white, "target white values must be finite")?;
+    validate_degree(
+        degree_of_adaptation,
+        "degree_of_adaptation must be finite and within 0..=1",
+    )?;
+
+    let matrix = transform.matrix();
+    let inverse = invert_matrix3(matrix);
+    let rgb = multiply_matrix3_vector3(matrix, xyz);
+    let rgbw_source = multiply_matrix3_vector3(matrix, source_white);
+    let rgbw_target = multiply_matrix3_vector3(matrix, target_white);
+    let mut adapted_rgb = [0.0; 3];
+
+    for index in 0..3 {
+        if rgbw_source[index].abs() <= EPSILON {
+            return Err(LuxError::InvalidInput(
+                "source white produces zero CAT sensor response",
+            ));
+        }
+        let ratio = rgbw_target[index] / rgbw_source[index];
+        let scale = degree_of_adaptation * ratio + (1.0 - degree_of_adaptation);
+        adapted_rgb[index] = rgb[index] * scale;
+    }
+
+    Ok(multiply_matrix3_vector3(inverse, adapted_rgb))
+}
+
+pub fn cat_apply_mode(
+    xyz: [f64; 3],
+    source_white: [f64; 3],
+    target_white: [f64; 3],
+    baseline_white: Option<[f64; 3]>,
+    transform: CatTransform,
+    mode: CatMode,
+    degrees_of_adaptation: [f64; 2],
+) -> LuxResult<[f64; 3]> {
+    validate_xyz_triplet(xyz, "xyz values must be finite")?;
+    validate_xyz_triplet(source_white, "source white values must be finite")?;
+    validate_xyz_triplet(target_white, "target white values must be finite")?;
+    validate_degree(
+        degrees_of_adaptation[0],
+        "degrees_of_adaptation[0] must be finite and within 0..=1",
+    )?;
+    validate_degree(
+        degrees_of_adaptation[1],
+        "degrees_of_adaptation[1] must be finite and within 0..=1",
+    )?;
+
+    let baseline_white = baseline_white.unwrap_or(mode.default_baseline_white());
+    validate_xyz_triplet(baseline_white, "baseline white values must be finite")?;
+
+    match mode {
+        CatMode::OneStep => cat_apply(
+            xyz,
+            source_white,
+            target_white,
+            transform,
+            degrees_of_adaptation[0],
+        ),
+        CatMode::SourceToBaseline => cat_apply(
+            xyz,
+            source_white,
+            baseline_white,
+            transform,
+            degrees_of_adaptation[0],
+        ),
+        CatMode::BaselineToTarget => cat_apply(
+            xyz,
+            baseline_white,
+            target_white,
+            transform,
+            degrees_of_adaptation[0],
+        ),
+        CatMode::TwoStep => {
+            let matrix = transform.matrix();
+            let inverse = invert_matrix3(matrix);
+            let rgb = multiply_matrix3_vector3(matrix, xyz);
+            let rgbw1 = multiply_matrix3_vector3(matrix, source_white);
+            let rgbw2 = multiply_matrix3_vector3(matrix, target_white);
+            let rgbw0 = multiply_matrix3_vector3(matrix, baseline_white);
+            let mut adapted_rgb = [0.0; 3];
+
+            for index in 0..3 {
+                if rgbw1[index].abs() <= EPSILON {
+                    return Err(LuxError::InvalidInput(
+                        "source white produces zero CAT sensor response",
+                    ));
+                }
+                if rgbw2[index].abs() <= EPSILON {
+                    return Err(LuxError::InvalidInput(
+                        "target white produces zero CAT sensor response",
+                    ));
+                }
+                let scale10 =
+                    degrees_of_adaptation[0] * (rgbw0[index] / rgbw1[index]) + (1.0 - degrees_of_adaptation[0]);
+                let scale20 =
+                    degrees_of_adaptation[1] * (rgbw0[index] / rgbw2[index]) + (1.0 - degrees_of_adaptation[1]);
+                adapted_rgb[index] = rgb[index] * scale10 / scale20;
+            }
+
+            Ok(multiply_matrix3_vector3(inverse, adapted_rgb))
+        }
+    }
+}
+
+pub fn cat_degree_of_adaptation(
+    surround: CatSurround,
+    adapting_luminance: f64,
+) -> LuxResult<f64> {
+    if !adapting_luminance.is_finite() || adapting_luminance < 0.0 {
+        return Err(LuxError::InvalidInput(
+            "adapting_luminance must be finite and non-negative",
+        ));
+    }
+
+    let factor = surround.factor();
+    let degree = factor * (1.0 - (1.0 / 3.6) * ((-adapting_luminance - 42.0) / 92.0).exp());
+    Ok(clamp(degree, 0.0, 1.0))
+}
+
+pub fn cat_apply_with_conditions(
+    xyz: [f64; 3],
+    source_white: [f64; 3],
+    target_white: [f64; 3],
+    transform: CatTransform,
+    surround: CatSurround,
+    adapting_luminance: f64,
+) -> LuxResult<[f64; 3]> {
+    let degree = cat_degree_of_adaptation(surround, adapting_luminance)?;
+    cat_apply(xyz, source_white, target_white, transform, degree)
+}
+
 // sRGB transforms.
 
 pub fn xyz_to_srgb(xyz: [f64; 3], gamma: f64, offset: f64, use_linear_part: bool) -> [f64; 3] {
@@ -412,6 +1037,130 @@ pub fn luv_to_xyz(luv: [f64; 3], white_point: [f64; 3]) -> [f64; 3] {
     yuv[0] = white_yuv[0] * cie_y_ratio_from_lightness(luv[0]);
 
     yuv_to_xyz(yuv)
+}
+
+
+// Color difference.
+
+fn delta_e_lab(lab1: [f64; 3], lab2: [f64; 3], formula: DeltaEFormula) -> f64 {
+    match formula {
+        DeltaEFormula::Cie76 => delta_e_cie76_lab(lab1, lab2),
+        DeltaEFormula::Ciede2000 => delta_e_ciede2000_lab(lab1, lab2),
+    }
+}
+
+pub fn delta_e(
+    xyz1: [f64; 3],
+    xyz2: [f64; 3],
+    white_point: [f64; 3],
+    formula: DeltaEFormula,
+) -> f64 {
+    delta_e_lab(
+        xyz_to_lab(xyz1, white_point),
+        xyz_to_lab(xyz2, white_point),
+        formula,
+    )
+}
+
+pub fn delta_e_cie76(xyz1: [f64; 3], xyz2: [f64; 3], white_point: [f64; 3]) -> f64 {
+    delta_e(
+        xyz1,
+        xyz2,
+        white_point,
+        DeltaEFormula::Cie76,
+    )
+}
+
+pub fn delta_e_ciede2000(xyz1: [f64; 3], xyz2: [f64; 3], white_point: [f64; 3]) -> f64 {
+    delta_e(
+        xyz1,
+        xyz2,
+        white_point,
+        DeltaEFormula::Ciede2000,
+    )
+}
+
+fn delta_e_cie76_lab(lab1: [f64; 3], lab2: [f64; 3]) -> f64 {
+    let dl = lab1[0] - lab2[0];
+    let da = lab1[1] - lab2[1];
+    let db = lab1[2] - lab2[2];
+    (dl * dl + da * da + db * db).sqrt()
+}
+
+fn delta_e_ciede2000_lab(lab1: [f64; 3], lab2: [f64; 3]) -> f64 {
+    let (l1, a1, b1) = (lab1[0], lab1[1], lab1[2]);
+    let (l2, a2, b2) = (lab2[0], lab2[1], lab2[2]);
+
+    let c1 = (a1 * a1 + b1 * b1).sqrt();
+    let c2 = (a2 * a2 + b2 * b2).sqrt();
+    let c_bar = (c1 + c2) / 2.0;
+    let c_bar7 = c_bar.powi(7);
+    let g = 0.5 * (1.0 - (c_bar7 / (c_bar7 + 25_f64.powi(7))).sqrt());
+
+    let a1_prime = (1.0 + g) * a1;
+    let a2_prime = (1.0 + g) * a2;
+    let c1_prime = (a1_prime * a1_prime + b1 * b1).sqrt();
+    let c2_prime = (a2_prime * a2_prime + b2 * b2).sqrt();
+    let h1_prime = if c1_prime == 0.0 {
+        0.0
+    } else {
+        hue_angle_degrees(a1_prime, b1)
+    };
+    let h2_prime = if c2_prime == 0.0 {
+        0.0
+    } else {
+        hue_angle_degrees(a2_prime, b2)
+    };
+
+    let delta_l_prime = l2 - l1;
+    let delta_c_prime = c2_prime - c1_prime;
+
+    let delta_h_prime = if c1_prime == 0.0 || c2_prime == 0.0 {
+        0.0
+    } else {
+        let mut delta = h2_prime - h1_prime;
+        if delta > 180.0 {
+            delta -= 360.0;
+        } else if delta < -180.0 {
+            delta += 360.0;
+        }
+        delta
+    };
+    let delta_big_h_prime =
+        2.0 * (c1_prime * c2_prime).sqrt() * degrees_to_radians(delta_h_prime / 2.0).sin();
+
+    let l_bar_prime = (l1 + l2) / 2.0;
+    let c_bar_prime = (c1_prime + c2_prime) / 2.0;
+    let h_bar_prime = if c1_prime == 0.0 || c2_prime == 0.0 {
+        h1_prime + h2_prime
+    } else if (h1_prime - h2_prime).abs() > 180.0 {
+        if h1_prime + h2_prime < 360.0 {
+            (h1_prime + h2_prime + 360.0) / 2.0
+        } else {
+            (h1_prime + h2_prime - 360.0) / 2.0
+        }
+    } else {
+        (h1_prime + h2_prime) / 2.0
+    };
+
+    let t = 1.0 - 0.17 * degrees_to_radians(h_bar_prime - 30.0).cos()
+        + 0.24 * degrees_to_radians(2.0 * h_bar_prime).cos()
+        + 0.32 * degrees_to_radians(3.0 * h_bar_prime + 6.0).cos()
+        - 0.20 * degrees_to_radians(4.0 * h_bar_prime - 63.0).cos();
+    let delta_theta = 30.0 * (-(((h_bar_prime - 275.0) / 25.0).powi(2))).exp();
+    let c_bar_prime7 = c_bar_prime.powi(7);
+    let r_c = 2.0 * (c_bar_prime7 / (c_bar_prime7 + 25_f64.powi(7))).sqrt();
+    let s_l =
+        1.0 + (0.015 * (l_bar_prime - 50.0).powi(2)) / (20.0 + (l_bar_prime - 50.0).powi(2)).sqrt();
+    let s_c = 1.0 + 0.045 * c_bar_prime;
+    let s_h = 1.0 + 0.015 * c_bar_prime * t;
+    let r_t = -degrees_to_radians(2.0 * delta_theta).sin() * r_c;
+
+    let l_term = delta_l_prime / s_l;
+    let c_term = delta_c_prime / s_c;
+    let h_term = delta_big_h_prime / s_h;
+
+    (l_term * l_term + c_term * c_term + h_term * h_term + r_t * c_term * h_term).sqrt()
 }
 
 pub fn get_cie_mesopic_adaptation(
@@ -575,9 +1324,12 @@ fn load_scotopic_vlbar_on(target_wavelengths: &[f64]) -> LuxResult<Spectrum> {
 #[cfg(test)]
 mod tests {
     use super::{
+        cat_apply, cat_apply_mode, cat_apply_with_conditions, cat_degree_of_adaptation, delta_e,
+        delta_e_cie76, delta_e_ciede2000, delta_e_cie76_lab, delta_e_ciede2000_lab,
         get_cie_mesopic_adaptation, lab_to_xyz, lms_to_xyz, luv_to_xyz, srgb_to_xyz,
-        vlbar_cie_mesopic, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv, xyz_to_yxy,
-        yuv_to_xyz, yxy_to_xyz, Observer,
+        vlbar_cie_mesopic, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv,
+        xyz_to_yxy, yuv_to_xyz, yxy_to_xyz, CatMode, CatSurround, CatTransform, DeltaEFormula,
+        Observer, Tristimulus, TristimulusSet,
     };
 
     #[test]
@@ -699,6 +1451,427 @@ mod tests {
         assert!((xyz[0] - 0.25).abs() < 1e-9);
         assert!((xyz[1] - 0.5).abs() < 1e-12);
         assert!((xyz[2] - 0.25).abs() < 1e-9);
+    }
+
+    #[test]
+    fn computes_delta_e_cie76() {
+        let white = [95.047, 100.0, 108.883];
+        let xyz1 = lab_to_xyz([50.0, 2.5, -80.0], white);
+        let xyz2 = lab_to_xyz([50.0, 0.0, -82.5], white);
+        let delta = delta_e_cie76(xyz1, xyz2, white);
+        assert!((delta - 3.535_533_905_932_737_8).abs() < 1e-12);
+    }
+
+    #[test]
+    fn computes_delta_e_ciede2000() {
+        let white = [95.047, 100.0, 108.883];
+        let xyz1 = lab_to_xyz([50.0, 2.6772, -79.7751], white);
+        let xyz2 = lab_to_xyz([50.0, 0.0, -82.7485], white);
+        let delta = delta_e_ciede2000(xyz1, xyz2, white);
+        assert!((delta - 2.042_459_680_156_574).abs() < 1e-12);
+    }
+
+    #[test]
+    fn computes_delta_e_with_formula_dispatch() {
+        let white = [95.047, 100.0, 108.883];
+        let xyz1 = lab_to_xyz([50.0, 2.6772, -79.7751], white);
+        let xyz2 = lab_to_xyz([50.0, 0.0, -82.7485], white);
+        let delta = delta_e(xyz1, xyz2, white, DeltaEFormula::Ciede2000);
+        assert!((delta - 2.042_459_680_156_574).abs() < 1e-12);
+    }
+
+    #[test]
+    fn computes_delta_e_from_xyz() {
+        let white = [95.047, 100.0, 108.883];
+        let lab1 = [50.0, 2.5, -80.0];
+        let lab2 = [50.0, 0.0, -82.5];
+        let xyz1 = lab_to_xyz(lab1, white);
+        let xyz2 = lab_to_xyz(lab2, white);
+        let delta = delta_e(xyz1, xyz2, white, DeltaEFormula::Cie76);
+        assert!((delta - delta_e_cie76_lab(lab1, lab2)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn internal_lab_paths_match_xyz_paths() {
+        let white = [95.047, 100.0, 108.883];
+        let lab1 = [50.0, 2.6772, -79.7751];
+        let lab2 = [50.0, 0.0, -82.7485];
+        let xyz1 = lab_to_xyz(lab1, white);
+        let xyz2 = lab_to_xyz(lab2, white);
+        assert!((delta_e_cie76(xyz1, xyz2, white) - delta_e_cie76_lab(lab1, lab2)).abs() < 1e-12);
+        assert!(
+            (delta_e_ciede2000(xyz1, xyz2, white) - delta_e_ciede2000_lab(lab1, lab2)).abs()
+                < 1e-12
+        );
+    }
+
+    #[test]
+    fn applies_bradford_chromatic_adaptation() {
+        let adapted = cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Bradford,
+            1.0,
+        )
+        .unwrap();
+        assert!((adapted[0] - 21.970_203_102_921_214).abs() < 1e-12);
+        assert!((adapted[1] - 19.999_901_615_516_674).abs() < 1e-12);
+        assert!((adapted[2] - 7.118_055_791_689_174).abs() < 1e-12);
+    }
+
+    #[test]
+    fn applies_cat02_chromatic_adaptation() {
+        let adapted = cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Cat02,
+            1.0,
+        )
+        .unwrap();
+        assert!((adapted[0] - 21.970_153_635_389_728).abs() < 1e-12);
+        assert!((adapted[1] - 19.999_847_882_170_943).abs() < 1e-12);
+        assert!((adapted[2] - 7.118_149_458_933_564).abs() < 1e-12);
+    }
+
+    #[test]
+    fn applies_cat16_chromatic_adaptation() {
+        let adapted = cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Cat16,
+            1.0,
+        )
+        .unwrap();
+        assert!((adapted[0] - 21.970_301_223_531_525).abs() < 1e-12);
+        assert!((adapted[1] - 20.000_021_021_038_33).abs() < 1e-12);
+        assert!((adapted[2] - 7.118_208_448_159_319).abs() < 1e-12);
+    }
+
+    #[test]
+    fn rejects_invalid_adaptation_degree() {
+        let err = cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Bradford,
+            1.5,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "invalid input: degree_of_adaptation must be finite and within 0..=1"
+        );
+    }
+
+    #[test]
+    fn computes_degree_of_adaptation_for_average_surround() {
+        let degree = cat_degree_of_adaptation(CatSurround::Average, 318.31).unwrap();
+        assert!((degree - 0.994_468_780_088_437_4).abs() < 1e-12);
+    }
+
+    #[test]
+    fn computes_degree_of_adaptation_for_dim_surround() {
+        let degree = cat_degree_of_adaptation(CatSurround::Dim, 20.0).unwrap();
+        assert!((degree - 0.772_572_461_903_455_1).abs() < 1e-12);
+    }
+
+    #[test]
+    fn computes_degree_of_adaptation_for_dark_surround() {
+        let degree = cat_degree_of_adaptation(CatSurround::Dark, 0.0).unwrap();
+        assert!((degree - 0.659_225_947_140_2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn applies_chromatic_adaptation_with_conditions() {
+        let adapted = cat_apply_with_conditions(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Bradford,
+            CatSurround::Average,
+            318.31,
+        )
+        .unwrap();
+        assert!((adapted[0] - 21.953_829_568_576_072).abs() < 1e-12);
+        assert!((adapted[1] - 19.999_902_159_702_89).abs() < 1e-12);
+        assert!((adapted[2] - 7.199_154_229_436_402).abs() < 1e-12);
+    }
+
+    #[test]
+    fn applies_two_step_bradford_chromatic_adaptation() {
+        let adapted = cat_apply_mode(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            Some([100.0, 100.0, 100.0]),
+            CatTransform::Bradford,
+            CatMode::TwoStep,
+            [0.8, 0.6],
+        )
+        .unwrap();
+        assert!((adapted[0] - 20.321_183_547_718_547).abs() < 1e-12);
+        assert!((adapted[1] - 19.738_985_345_802_1).abs() < 1e-12);
+        assert!((adapted[2] - 9.694_619_002_109_818).abs() < 1e-12);
+    }
+
+    #[test]
+    fn applies_two_step_cat16_chromatic_adaptation() {
+        let adapted = cat_apply_mode(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            Some([100.0, 100.0, 100.0]),
+            CatTransform::Cat16,
+            CatMode::TwoStep,
+            [0.8, 0.6],
+        )
+        .unwrap();
+        assert!((adapted[0] - 20.564_644_514_788_387).abs() < 1e-12);
+        assert!((adapted[1] - 20.001_575_611_836_01).abs() < 1e-12);
+        assert!((adapted[2] - 9.934_161_728_245_801).abs() < 1e-12);
+    }
+
+    #[test]
+    fn source_to_baseline_mode_matches_one_step_helper() {
+        let adapted = cat_apply_mode(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            Some([100.0, 100.0, 100.0]),
+            CatTransform::Bradford,
+            CatMode::SourceToBaseline,
+            [1.0, 1.0],
+        )
+        .unwrap();
+        let helper = cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [100.0, 100.0, 100.0],
+            CatTransform::Bradford,
+            1.0,
+        )
+        .unwrap();
+        assert_eq!(adapted, helper);
+    }
+
+    #[test]
+    fn batch_chromaticity_transforms_match_scalar_versions() {
+        let xyz = [[0.25, 0.5, 0.25], [0.2, 0.3, 0.4]];
+        assert_eq!(
+            TristimulusSet::new(xyz.to_vec()).xyz_to_yxy().into_vec(),
+            vec![xyz_to_yxy(xyz[0]), xyz_to_yxy(xyz[1])]
+        );
+        let yxy = [[0.5, 0.25, 0.5], [0.3, 0.222_222_222_222_222_2, 0.333_333_333_333_333_3]];
+        assert_eq!(
+            TristimulusSet::new(yxy.to_vec()).yxy_to_xyz().into_vec(),
+            vec![yxy_to_xyz(yxy[0]), yxy_to_xyz(yxy[1])]
+        );
+        assert_eq!(
+            TristimulusSet::new(xyz.to_vec()).xyz_to_yuv().into_vec(),
+            vec![xyz_to_yuv(xyz[0]), xyz_to_yuv(xyz[1])]
+        );
+        let yuv = [
+            [0.5, 0.117_647_058_823_529_41, 0.529_411_764_705_882_4],
+            [0.3, 0.129_032_258_064_516_13, 0.435_483_870_967_741_94],
+        ];
+        assert_eq!(
+            TristimulusSet::new(yuv.to_vec()).yuv_to_xyz().into_vec(),
+            vec![yuv_to_xyz(yuv[0]), yuv_to_xyz(yuv[1])]
+        );
+    }
+
+    #[test]
+    fn batch_color_space_transforms_match_scalar_versions() {
+        let xyz = [[0.25, 0.5, 0.25], [0.2, 0.3, 0.4]];
+        let white = [0.5, 0.5, 0.5];
+        let xyz_set = TristimulusSet::new(xyz.to_vec());
+        let lab = xyz_set.xyz_to_lab(white).into_vec();
+        assert_eq!(lab, vec![xyz_to_lab(xyz[0], white), xyz_to_lab(xyz[1], white)]);
+        assert_eq!(
+            TristimulusSet::new(lab.clone()).lab_to_xyz(white).into_vec(),
+            vec![lab_to_xyz(lab[0], white), lab_to_xyz(lab[1], white)]
+        );
+        let luv = xyz_set.xyz_to_luv(white).into_vec();
+        assert_eq!(luv, vec![xyz_to_luv(xyz[0], white), xyz_to_luv(xyz[1], white)]);
+        assert_eq!(
+            TristimulusSet::new(luv.clone()).luv_to_xyz(white).into_vec(),
+            vec![luv_to_xyz(luv[0], white), luv_to_xyz(luv[1], white)]
+        );
+    }
+
+    #[test]
+    fn batch_lms_and_srgb_transforms_match_scalar_versions() {
+        let xyz = [[0.25, 0.5, 0.25], [20.0, 21.0, 22.0]];
+        let lms_many = TristimulusSet::new(vec![xyz[0], xyz[0]])
+            .xyz_to_lms(Observer::Cie1931_2)
+            .unwrap()
+            .into_vec();
+        assert_eq!(lms_many, vec![xyz_to_lms(xyz[0], Observer::Cie1931_2).unwrap(); 2]);
+        let lms_input = [lms_many[0], lms_many[1]];
+        assert_eq!(
+            TristimulusSet::new(lms_input.to_vec())
+                .lms_to_xyz(Observer::Cie1931_2)
+                .unwrap()
+                .into_vec(),
+            vec![
+                lms_to_xyz(lms_input[0], Observer::Cie1931_2).unwrap(),
+                lms_to_xyz(lms_input[1], Observer::Cie1931_2).unwrap()
+            ]
+        );
+        assert_eq!(
+            TristimulusSet::new(vec![xyz[1], xyz[1]])
+                .xyz_to_srgb(2.4, -0.055, true)
+                .into_vec(),
+            vec![xyz_to_srgb(xyz[1], 2.4, -0.055, true); 2]
+        );
+        let rgb = [[64.0, 128.0, 192.0], [32.0, 64.0, 96.0]];
+        assert_eq!(
+            TristimulusSet::new(rgb.to_vec())
+                .srgb_to_xyz(2.4, -0.055, true)
+                .into_vec(),
+            vec![
+                srgb_to_xyz(rgb[0], 2.4, -0.055, true),
+                srgb_to_xyz(rgb[1], 2.4, -0.055, true)
+            ]
+        );
+    }
+
+    #[test]
+    fn batch_cat_transforms_match_scalar_versions() {
+        let xyz = [[19.01, 20.0, 21.78], [20.0, 21.0, 22.0]];
+        let many = TristimulusSet::new(xyz.to_vec())
+            .cat_apply(
+                [95.047, 100.0, 108.883],
+                [109.85, 100.0, 35.585],
+                CatTransform::Bradford,
+                1.0,
+            )
+            .unwrap()
+            .into_vec();
+        assert_eq!(
+            many,
+            vec![
+                cat_apply(
+                    xyz[0],
+                    [95.047, 100.0, 108.883],
+                    [109.85, 100.0, 35.585],
+                    CatTransform::Bradford,
+                    1.0
+                )
+                .unwrap(),
+                cat_apply(
+                    xyz[1],
+                    [95.047, 100.0, 108.883],
+                    [109.85, 100.0, 35.585],
+                    CatTransform::Bradford,
+                    1.0
+                )
+                .unwrap()
+            ]
+        );
+        let conditioned = TristimulusSet::new(xyz.to_vec())
+            .cat_apply_with_conditions(
+                [95.047, 100.0, 108.883],
+                [109.85, 100.0, 35.585],
+                CatTransform::Bradford,
+                CatSurround::Average,
+                318.31,
+            )
+            .unwrap()
+            .into_vec();
+        assert_eq!(
+            conditioned[0],
+            cat_apply_with_conditions(
+                xyz[0],
+                [95.047, 100.0, 108.883],
+                [109.85, 100.0, 35.585],
+                CatTransform::Bradford,
+                CatSurround::Average,
+                318.31
+            )
+            .unwrap()
+        );
+        let mode_many = TristimulusSet::new(xyz.to_vec())
+            .cat_apply_mode(
+                [95.047, 100.0, 108.883],
+                [109.85, 100.0, 35.585],
+                Some([100.0, 100.0, 100.0]),
+                CatTransform::Bradford,
+                CatMode::TwoStep,
+                [0.8, 0.6],
+            )
+            .unwrap()
+            .into_vec();
+        assert_eq!(
+            mode_many[0],
+            cat_apply_mode(
+                xyz[0],
+                [95.047, 100.0, 108.883],
+                [109.85, 100.0, 35.585],
+                Some([100.0, 100.0, 100.0]),
+                CatTransform::Bradford,
+                CatMode::TwoStep,
+                [0.8, 0.6]
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn tristimulus_wrapper_matches_scalar_transforms() {
+        let xyz = Tristimulus::new([0.25, 0.5, 0.25]);
+        assert_eq!(xyz.xyz_to_yxy().values(), xyz_to_yxy([0.25, 0.5, 0.25]));
+        assert_eq!(
+            xyz.xyz_to_lab([0.5, 0.5, 0.5]).values(),
+            xyz_to_lab([0.25, 0.5, 0.25], [0.5, 0.5, 0.5])
+        );
+        assert_eq!(
+            xyz.xyz_to_lms(Observer::Cie1931_2).unwrap().values(),
+            xyz_to_lms([0.25, 0.5, 0.25], Observer::Cie1931_2).unwrap()
+        );
+    }
+
+    #[test]
+    fn tristimulus_set_wrapper_matches_batch_transforms() {
+        let xyz = TristimulusSet::new(vec![[0.25, 0.5, 0.25], [0.2, 0.3, 0.4]]);
+        assert_eq!(
+            xyz.xyz_to_yxy().values(),
+            vec![xyz_to_yxy([0.25, 0.5, 0.25]), xyz_to_yxy([0.2, 0.3, 0.4])]
+        );
+        assert_eq!(
+            xyz.xyz_to_lab([0.5, 0.5, 0.5]).values(),
+            vec![
+                xyz_to_lab([0.25, 0.5, 0.25], [0.5, 0.5, 0.5]),
+                xyz_to_lab([0.2, 0.3, 0.4], [0.5, 0.5, 0.5])
+            ]
+        );
+        assert_eq!(
+            xyz.xyz_to_lms(Observer::Cie1931_2).unwrap().values(),
+            vec![
+                xyz_to_lms([0.25, 0.5, 0.25], Observer::Cie1931_2).unwrap(),
+                xyz_to_lms([0.2, 0.3, 0.4], Observer::Cie1931_2).unwrap()
+            ]
+        );
+    }
+
+    #[test]
+    fn tristimulus_set_delta_e_matches_pairwise_scalar_computation() {
+        let left = TristimulusSet::new(vec![
+            lab_to_xyz([50.0, 2.5, -80.0], [95.047, 100.0, 108.883]),
+            lab_to_xyz([50.0, 2.6772, -79.7751], [95.047, 100.0, 108.883]),
+        ]);
+        let right = TristimulusSet::new(vec![
+            lab_to_xyz([50.0, 0.0, -82.5], [95.047, 100.0, 108.883]),
+            lab_to_xyz([50.0, 0.0, -82.7485], [95.047, 100.0, 108.883]),
+        ]);
+        let result = left
+            .delta_e(&right, [95.047, 100.0, 108.883], DeltaEFormula::Ciede2000)
+            .unwrap();
+        assert_eq!(result.len(), 2);
+        assert!((result[1] - 2.042_459_680_156_574).abs() < 1e-12);
     }
 
     #[test]

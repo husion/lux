@@ -1,6 +1,6 @@
 use crate::color::TristimulusObserver;
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{SpectralMatrix, Spectrum};
+use crate::spectrum::Spectrum;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerType {
@@ -31,50 +31,13 @@ pub fn spd_to_xyz(
     )
 }
 
-pub fn spd_to_xyz_many(
-    spectra: &SpectralMatrix,
-    observer: &TristimulusObserver,
-    relative: bool,
-) -> LuxResult<Vec<[f64; 3]>> {
-    let wavelengths = spectra.wavelengths();
-    let x_bar = observer.x_bar_spectrum()?.interpolate_linear(wavelengths)?;
-    let y_bar = observer.vl_spectrum()?.interpolate_linear(wavelengths)?;
-    let z_bar = observer.z_bar_spectrum()?.interpolate_linear(wavelengths)?;
-
-    let mut results = Vec::with_capacity(spectra.spectrum_count());
-    for values in spectra.spectra() {
-        let spectrum = Spectrum::new(wavelengths.to_vec(), values.clone())?;
-        results.push(integrate_xyz(
-            &spectrum,
-            x_bar.values(),
-            y_bar.values(),
-            z_bar.values(),
-            observer.k,
-            relative,
-        )?);
-    }
-    Ok(results)
-}
-
 pub fn spd_to_ler(spectrum: &Spectrum, observer: &TristimulusObserver) -> LuxResult<f64> {
     let photometric = spd_to_power(spectrum, PowerType::Photometric, Some(observer))?;
     let radiometric = spd_to_power(spectrum, PowerType::Radiometric, None)?;
     Ok(photometric / radiometric)
 }
 
-pub fn spd_to_ler_many(
-    spectra: &SpectralMatrix,
-    observer: &TristimulusObserver,
-) -> LuxResult<Vec<f64>> {
-    let mut results = Vec::with_capacity(spectra.spectrum_count());
-    for values in spectra.spectra() {
-        let spectrum = Spectrum::new(spectra.wavelengths().to_vec(), values.clone())?;
-        results.push(spd_to_ler(&spectrum, observer)?);
-    }
-    Ok(results)
-}
-
-fn integrate_xyz(
+pub(crate) fn integrate_xyz(
     spectrum: &Spectrum,
     x_bar: &[f64],
     y_bar: &[f64],
@@ -149,9 +112,7 @@ pub fn spd_to_power(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        spd_to_ler, spd_to_ler_many, spd_to_power, spd_to_xyz, spd_to_xyz_many, PowerType,
-    };
+    use super::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType};
     use crate::color::Observer;
     use crate::spectrum::{SpectralMatrix, Spectrum};
 
@@ -200,7 +161,7 @@ mod tests {
         let observer = Observer::Cie1931_2.standard().unwrap();
         let spectra =
             SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap();
-        let xyz = spd_to_xyz_many(&spectra, &observer, true).unwrap();
+        let xyz = spectra.spd_to_xyz(&observer, true).unwrap();
         assert_eq!(xyz.len(), 2);
         assert!((xyz[0][0] - 52.021_027_306_606_52).abs() < 1e-9);
         assert!((xyz[1][1] - 100.0).abs() < 1e-12);
@@ -219,7 +180,7 @@ mod tests {
         let observer = Observer::Cie1931_2.standard().unwrap();
         let spectra =
             SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap();
-        let ler = spd_to_ler_many(&spectra, &observer).unwrap();
+        let ler = spectra.spd_to_ler(&observer).unwrap();
         assert_eq!(ler.len(), 2);
         assert!((ler[0] - 682.953_062_906_7).abs() < 1e-9);
         assert!((ler[1] - 682.953_062_906_7).abs() < 1e-9);

@@ -11,7 +11,12 @@ Current repository status, aligned with [`TODO_REFACTOR.md`](./TODO_REFACTOR.md)
 - `P0` base spectral kernel: completed
 - `P1` reference-source and CCT path: completed
 - `P1.5` first standard-illuminant registry: completed
-- next priority: `CAT / deltaE` (`P2`)
+- `P2` status: `deltaE` initial path completed
+- `P2` status: one-step `CAT` path completed for `Bradford / CAT02 / CAT16`
+- `P2` status: CAT adaptation-degree and viewing-condition entry points completed
+- `P2` status: CAT mode layer completed for `1>2 / 1>0 / 0>2 / 1>0>2`
+- `P2` status: explicit `Tristimulus / TristimulusSet` color data model completed
+- next priority: higher-level color appearance dependencies and broader CAT utility coverage
 
 At the moment the crate already covers:
 
@@ -31,6 +36,7 @@ At the moment the crate already covers:
   - `spd_to_power`
   - `spd_to_ler`
   - `spd_to_xyz`
+  - `Spectrum` / `SpectralMatrix` are the single and batch entry points for spectral workflows
 - CIE 191:2010 mesopic support:
   - `get_cie_mesopic_adaptation`
   - `vlbar_cie_mesopic`
@@ -55,6 +61,19 @@ At the moment the crate already covers:
   - `XYZ <-> Luv`
   - `XYZ <-> LMS`
   - `XYZ <-> sRGB`
+  - explicit `Tristimulus` / `TristimulusSet` wrappers are now the recommended single and batch workflow
+- color difference:
+  - `deltaE` from `XYZ + white point` via `CIE76`
+  - `deltaE` from `XYZ + white point` via `CIEDE2000`
+- chromatic adaptation:
+  - `cat_apply`
+  - `cat_apply_mode`
+  - `cat_apply_with_conditions`
+  - `cat_degree_of_adaptation`
+  - `Bradford`
+  - `CAT02`
+  - `CAT16`
+  - CAT modes: `1>2`, `1>0`, `0>2`, `1>0>2`
 
 ## Why This Repo Exists
 
@@ -87,17 +106,28 @@ Parity checks currently run through [`tests/python_parity.rs`](./tests/python_pa
 ## Quick Example
 
 ```rust
-use lux::{spd_to_power, Observer, PowerType, Spectrum};
+use lux::{CatTransform, Tristimulus, TristimulusSet};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let observer = Observer::Cie1931_2.standard()?;
-    let spectrum = Spectrum::new(vec![555.0, 556.0], vec![1.0, 1.0])?;
-    let lumens = spd_to_power(&spectrum, PowerType::Photometric, Some(&observer))?;
+    let sample = Tristimulus::new([19.01, 20.0, 21.78]);
+    let adapted = sample.cat_apply(
+        [95.047, 100.0, 108.883],
+        [109.85, 100.0, 35.585],
+        CatTransform::Bradford,
+        1.0,
+    )?;
 
-    println!("{lumens}");
+    let batch = TristimulusSet::new(vec![[0.25, 0.5, 0.25], [0.2, 0.3, 0.4]]);
+    let lab = batch.xyz_to_lab([0.5, 0.5, 0.5]);
+
+    println!("{:?}", adapted.values());
+    println!("{:?}", lab.values());
     Ok(())
 }
 ```
+
+For color calculations, use `Tristimulus` and `TristimulusSet` as the primary API.
+For spectral calculations, use `Spectrum` and `SpectralMatrix` as the primary API.
 
 ## Public API Snapshot
 
@@ -113,9 +143,7 @@ The root crate currently re-exports these main entry points:
 - photometry:
   - `spd_to_power`
   - `spd_to_ler`
-  - `spd_to_ler_many`
   - `spd_to_xyz`
-  - `spd_to_xyz_many`
 - illuminants:
   - `blackbody`
   - `daylightlocus`
@@ -126,6 +154,8 @@ The root crate currently re-exports these main entry points:
   - `xyz_to_cct`
   - `cct_to_xyz`
 - color:
+  - `Tristimulus`
+  - `TristimulusSet`
   - `xyz_to_yxy`, `yxy_to_xyz`
   - `xyz_to_yuv`, `yuv_to_xyz`
   - `xyz_to_lab`, `lab_to_xyz`
@@ -134,15 +164,18 @@ The root crate currently re-exports these main entry points:
   - `xyz_to_srgb`, `srgb_to_xyz`
   - `vlbar_cie_mesopic`
   - `get_cie_mesopic_adaptation`
+  - `cat_apply`
+  - `cat_apply_mode`
+  - `cat_apply_with_conditions`
+  - `cat_degree_of_adaptation`
 
 ## Roadmap
 
 Near-term work, following [`TODO_REFACTOR.md`](./TODO_REFACTOR.md):
 
 1. finish illuminant naming cleanup and alias normalization
-2. implement `CAT` main paths
-3. implement `deltaE`
-4. expand observer sets and interpolation semantics toward broader `luxpy` coverage
+2. broaden higher-level adaptation utilities on top of the CAT mode layer
+3. expand observer sets and interpolation semantics toward broader `luxpy` coverage
 
 Longer-term items such as CAM, CRI/TM-30, photobiological metrics, individual observers, and hyperspectral tooling remain intentionally deferred until the core kernel stays stable.
 

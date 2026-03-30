@@ -351,13 +351,25 @@ P0 验收完成标志：
 
 计划：
 
-- [ ] 实现 `cat.apply()` 主路径
+- [x] 实现 `cat.apply()` 主路径
 - [ ] 实现适应度计算
-- [ ] 实现基础 CAT 变换族
-  - [ ] Bradford
-  - [ ] CAT02
-  - [ ] CAT16
-- [ ] 实现 `deltaE`
+- [x] 实现基础 CAT 变换族
+  - [x] Bradford
+  - [x] CAT02
+  - [x] CAT16
+- [x] 实现 `deltaE`
+
+说明：
+
+- 当前 `CAT` 已提供一步 von Kries 主路径，公开 API 以 `XYZ + source white + target white + transform + D` 形式暴露。
+- 当前已实现的变换矩阵包括 `Bradford`、`CAT02`、`CAT16`。
+- 当前已补上基于环境参数的适应度 `D` 计算，以及基于观察条件的上层适配入口。
+- 当前已补上 `CatMode` 策略层，覆盖 `1>2`、`1>0`、`0>2`、`1>0>2`。
+- 当前尚未实现的是更多文献模型、批量/矩阵风格 CAT 封装，以及更高层观察条件工具。
+- 当前已落地 `deltaE` 首批主路径：
+  - [x] `CIE76`
+  - [x] `CIEDE2000`
+- 当前 Rust API 以 `XYZ + 白点` 作为公开入口，内部再转换到 `Lab` 执行公式计算；后续如需贴近 `luxpy` 的更泛化 `DE_cspace` 族接口，再在此基础上扩展。
 
 ### Phase P3: CAM + CRI + photobiochem
 
@@ -481,7 +493,7 @@ P0 验收完成标志：
 7. [x] 进入 `blackbody/daylightphase/cri_ref`
 8. [x] 再进入 `xyz_to_cct/cct_to_xyz`
 9. [x] 然后进入固定标准光源数据集层首批 registry
-10. [ ] 再进入 `CAT / deltaE`
+10. [ ] 再进入更高层的 `CAT` 工具层
 
 当前建议：
 
@@ -489,7 +501,9 @@ P0 验收完成标志：
 - `xyz_to_cct / cct_to_xyz` 主路径已完成
 - 固定标准光源首批 registry 已完成
 - 光谱静态数据已经开始沉淀到仓库自有 `data/` 目录，后续新增标准光源应沿用同一组织方式
-- 下一阶段优先进入 `CAT / deltaE`
+- `deltaE` 首批主路径已完成
+- `CAT` 的一步主路径、`Bradford/CAT02/CAT16`、`D` / 观察条件入口、以及模式层已完成
+- 下一阶段优先进入更高层的 `CAT` 工具层，或继续补观察者/插值语义
 - 固定标准光源后续扩展仍应沿用统一 illuminant registry，而不是分散新增 `f1()`、`led_b1()` 一类 API
 
 ## 9. 暂不做的事项

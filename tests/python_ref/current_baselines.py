@@ -1,5 +1,7 @@
 import luxpy as lx
 import numpy as np
+from luxpy.color.deltaE import DE2000
+from luxpy.color import cat
 
 
 def fmt_scalar(value: float) -> str:
@@ -52,9 +54,50 @@ def main() -> None:
     print(f"lab_to_xyz={fmt_vec(lx.lab_to_xyz(lab_sample, xyzw=white_sample).ravel())}")
     print(f"xyz_to_luv={fmt_vec(luv_sample.ravel())}")
     print(f"luv_to_xyz={fmt_vec(lx.luv_to_xyz(luv_sample, xyzw=white_sample).ravel())}")
+    white_d65 = np.array([[95.047, 100.0, 108.883]])
+    delta_xyz1_cie76 = lx.lab_to_xyz(np.array([[50.0, 2.5, -80.0]]), xyzw=white_d65)
+    delta_xyz2_cie76 = lx.lab_to_xyz(np.array([[50.0, 0.0, -82.5]]), xyzw=white_d65)
+    delta_xyz1_ciede2000 = lx.lab_to_xyz(np.array([[50.0, 2.6772, -79.7751]]), xyzw=white_d65)
+    delta_xyz2_ciede2000 = lx.lab_to_xyz(np.array([[50.0, 0.0, -82.7485]]), xyzw=white_d65)
+    print(
+        "delta_e_cie76="
+        + fmt_scalar(
+            np.linalg.norm(
+                lx.xyz_to_lab(delta_xyz1_cie76, xyzw=white_d65).ravel()
+                - lx.xyz_to_lab(delta_xyz2_cie76, xyzw=white_d65).ravel()
+            )
+        )
+    )
+    print(
+        "delta_e_ciede2000="
+        + fmt_scalar(
+            DE2000(
+                delta_xyz1_ciede2000,
+                delta_xyz2_ciede2000,
+                dtype="xyz",
+                xyzwt=white_d65,
+                xyzwr=white_d65,
+            ).ravel()[0]
+        )
+    )
     print(f"xyz_to_lms_1931={fmt_vec(lms_1931.ravel())}")
     print(f"lms_to_xyz_1931={fmt_vec(lx.lms_to_xyz(lms_1931, cieobs='1931_2').ravel())}")
     print(f"xyz_to_lms_1964={fmt_vec(lms_1964.ravel())}")
+    cat_xyz = np.array([[19.01, 20.0, 21.78]])
+    cat_w1 = np.array([[95.047, 100.0, 108.883]])
+    cat_w2 = np.array([[109.85, 100.0, 35.585]])
+    cat_d_avg = cat.get_degree_of_adaptation(Dtype='cat02', F='avg', La=318.31)[0]
+    cat_d_dim = cat.get_degree_of_adaptation(Dtype='cat16', F='dim', La=20.0)[0]
+    cat_d_dark = cat.get_degree_of_adaptation(Dtype='cat16', F='dark', La=0.0)[0]
+    print(f"cat_d_avg={fmt_scalar(cat_d_avg)}")
+    print(f"cat_d_dim={fmt_scalar(cat_d_dim)}")
+    print(f"cat_d_dark={fmt_scalar(cat_d_dark)}")
+    print(f"cat_bradford={fmt_vec(cat.apply_vonkries1(cat_xyz, xyzw1=cat_w1, xyzw2=cat_w2, mcat='bfd').ravel())}")
+    print(f"cat_cat02={fmt_vec(cat.apply_vonkries1(cat_xyz, xyzw1=cat_w1, xyzw2=cat_w2, mcat='cat02').ravel())}")
+    print(f"cat_cat16={fmt_vec(cat.apply_vonkries1(cat_xyz, xyzw1=cat_w1, xyzw2=cat_w2, mcat='cat16').ravel())}")
+    print(f"cat_bradford_avg={fmt_vec(cat.apply_vonkries1(cat_xyz, xyzw1=cat_w1, xyzw2=cat_w2, mcat='bfd', D=cat_d_avg).ravel())}")
+    print(f"cat_two_step_bradford={fmt_vec(cat.apply_vonkries(cat_xyz, cat_w1, cat_w2, xyzw0=np.array([[100.0, 100.0, 100.0]]), D=[0.8, 0.6], mcat='bfd', catmode='1>0>2').ravel())}")
+    print(f"cat_two_step_cat16={fmt_vec(cat.apply_vonkries(cat_xyz, cat_w1, cat_w2, xyzw0=np.array([[100.0, 100.0, 100.0]]), D=[0.8, 0.6], mcat='cat16', catmode='1>0>2').ravel())}")
     print(f"xyz_to_srgb={fmt_vec(srgb_sample.ravel())}")
     print(
         f"srgb_to_xyz={fmt_vec(lx.srgb_to_xyz(np.array([[64.0, 128.0, 192.0]])).ravel())}"

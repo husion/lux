@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use lux::{
-    blackbody, cri_ref, daylightlocus, daylightphase, get_cie_mesopic_adaptation, getwld,
-    getwlr, lab_to_xyz, lms_to_xyz, luv_to_xyz, spd_to_ler, spd_to_ler_many, spd_to_power,
-    spd_to_xyz, spd_to_xyz_many, srgb_to_xyz, vlbar_cie_mesopic, xyz_to_cct, xyz_to_lab,
-    xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv, xyz_to_yxy, yuv_to_xyz, yxy_to_xyz,
-    cct_to_xyz, standard_illuminant, Observer, PowerType, SpectralMatrix, Spectrum,
-    SpectrumNormalization,
-    WavelengthGrid,
+    blackbody, cat_apply, cat_apply_mode, cat_apply_with_conditions, cat_degree_of_adaptation,
+    cct_to_xyz, cri_ref, daylightlocus, daylightphase, delta_e_cie76, delta_e_ciede2000,
+    get_cie_mesopic_adaptation, getwld, getwlr, lab_to_xyz, lms_to_xyz, luv_to_xyz, spd_to_ler,
+    spd_to_power, spd_to_xyz, srgb_to_xyz, standard_illuminant,
+    vlbar_cie_mesopic, xyz_to_cct, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv,
+    xyz_to_yxy, yuv_to_xyz, yxy_to_xyz, CatMode, CatSurround, CatTransform, Observer, PowerType,
+    SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid,
 };
 
 fn parse_scalar(value: &str) -> f64 {
@@ -210,6 +210,109 @@ fn current_rust_basics_match_luxpy() {
         ),
         &parse_vec(&baselines["luv_to_xyz"]),
         1e-9,
+    );
+    let white = [95.047, 100.0, 108.883];
+    let cie76_xyz1 = lab_to_xyz([50.0, 2.5, -80.0], white);
+    let cie76_xyz2 = lab_to_xyz([50.0, 0.0, -82.5], white);
+    assert_close(delta_e_cie76(cie76_xyz1, cie76_xyz2, white), parse_scalar(&baselines["delta_e_cie76"]), 1e-12);
+    let ciede2000_xyz1 = lab_to_xyz([50.0, 2.6772, -79.7751], white);
+    let ciede2000_xyz2 = lab_to_xyz([50.0, 0.0, -82.7485], white);
+    assert_close(
+        delta_e_ciede2000(ciede2000_xyz1, ciede2000_xyz2, white),
+        parse_scalar(&baselines["delta_e_ciede2000"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Bradford,
+            1.0,
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_bradford"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Cat02,
+            1.0,
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_cat02"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Cat16,
+            1.0,
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_cat16"]),
+        1e-12,
+    );
+    assert_close(
+        cat_degree_of_adaptation(CatSurround::Average, 318.31).unwrap(),
+        parse_scalar(&baselines["cat_d_avg"]),
+        1e-12,
+    );
+    assert_close(
+        cat_degree_of_adaptation(CatSurround::Dim, 20.0).unwrap(),
+        parse_scalar(&baselines["cat_d_dim"]),
+        1e-12,
+    );
+    assert_close(
+        cat_degree_of_adaptation(CatSurround::Dark, 0.0).unwrap(),
+        parse_scalar(&baselines["cat_d_dark"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply_with_conditions(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            CatTransform::Bradford,
+            CatSurround::Average,
+            318.31,
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_bradford_avg"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply_mode(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            Some([100.0, 100.0, 100.0]),
+            CatTransform::Bradford,
+            CatMode::TwoStep,
+            [0.8, 0.6],
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_two_step_bradford"]),
+        1e-12,
+    );
+    assert_vec_close(
+        &cat_apply_mode(
+            [19.01, 20.0, 21.78],
+            [95.047, 100.0, 108.883],
+            [109.85, 100.0, 35.585],
+            Some([100.0, 100.0, 100.0]),
+            CatTransform::Cat16,
+            CatMode::TwoStep,
+            [0.8, 0.6],
+        )
+        .unwrap(),
+        &parse_vec(&baselines["cat_two_step_cat16"]),
+        1e-12,
     );
     assert_vec_close(
         &xyz_to_lms([0.25, 0.5, 0.25], Observer::Cie1931_2).unwrap(),
@@ -546,11 +649,10 @@ fn current_rust_basics_match_luxpy() {
     .unwrap();
     assert_close(ler_1964, parse_scalar(&baselines["ler_1964"]), 1e-9);
 
-    let ler_many = spd_to_ler_many(
-        &SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap(),
-        &observer,
-    )
-    .unwrap();
+    let ler_many = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+        .unwrap()
+        .spd_to_ler(&observer)
+        .unwrap();
     assert_vec_close(&ler_many, &parse_vec(&baselines["ler_many_1931"]), 1e-9);
 
     let xyz = spd_to_xyz(
@@ -581,12 +683,10 @@ fn current_rust_basics_match_luxpy() {
         1e-9,
     );
 
-    let xyz_many = spd_to_xyz_many(
-        &SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap(),
-        &observer,
-        true,
-    )
-    .unwrap();
+    let xyz_many = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+        .unwrap()
+        .spd_to_xyz(&observer, true)
+        .unwrap();
     let xyz_many_flat: Vec<f64> = xyz_many
         .into_iter()
         .flat_map(|xyz| xyz.into_iter())
@@ -597,12 +697,11 @@ fn current_rust_basics_match_luxpy() {
         1e-9,
     );
 
-    let xyz_many_absolute = spd_to_xyz_many(
-        &SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap(),
-        &observer,
-        false,
-    )
-    .unwrap();
+    let xyz_many_absolute =
+        SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+            .unwrap()
+            .spd_to_xyz(&observer, false)
+            .unwrap();
     let xyz_many_absolute_flat: Vec<f64> = xyz_many_absolute
         .into_iter()
         .flat_map(|xyz| xyz.into_iter())

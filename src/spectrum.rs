@@ -191,6 +191,26 @@ impl Spectrum {
             self.values.iter().map(|value| value * scale).collect(),
         )
     }
+
+    pub fn spd_to_xyz(
+        &self,
+        observer: &TristimulusObserver,
+        relative: bool,
+    ) -> LuxResult<[f64; 3]> {
+        crate::photometry::spd_to_xyz(self, observer, relative)
+    }
+
+    pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<f64> {
+        crate::photometry::spd_to_ler(self, observer)
+    }
+
+    pub fn spd_to_power(
+        &self,
+        power_type: PowerType,
+        observer: Option<&TristimulusObserver>,
+    ) -> LuxResult<f64> {
+        spd_to_power(self, power_type, observer)
+    }
 }
 
 impl SpectralMatrix {
@@ -272,6 +292,42 @@ impl SpectralMatrix {
         }
 
         SpectralMatrix::new(self.wavelengths.clone(), spectra)
+    }
+
+    pub fn spd_to_xyz(
+        &self,
+        observer: &TristimulusObserver,
+        relative: bool,
+    ) -> LuxResult<Vec<[f64; 3]>> {
+        let wavelengths = self.wavelengths();
+        let x_bar = observer.x_bar_spectrum()?.interpolate_linear(wavelengths)?;
+        let y_bar = observer.vl_spectrum()?.interpolate_linear(wavelengths)?;
+        let z_bar = observer.z_bar_spectrum()?.interpolate_linear(wavelengths)?;
+
+        self.spectra
+            .iter()
+            .map(|values| {
+                let spectrum = Spectrum::new(wavelengths.to_vec(), values.clone())?;
+                crate::photometry::integrate_xyz(
+                    &spectrum,
+                    x_bar.values(),
+                    y_bar.values(),
+                    z_bar.values(),
+                    observer.k,
+                    relative,
+                )
+            })
+            .collect()
+    }
+
+    pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<Vec<f64>> {
+        self.spectra
+            .iter()
+            .map(|values| {
+                let spectrum = Spectrum::new(self.wavelengths.to_vec(), values.clone())?;
+                spectrum.spd_to_ler(observer)
+            })
+            .collect()
     }
 }
 
