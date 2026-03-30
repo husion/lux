@@ -8,16 +8,26 @@ Pure Rust lighting and color science library for spectral, photometric, and colo
 
 The crate currently includes:
 
+- `P0` base spectral kernel: completed
+- `P1` reference-source and CCT path: completed
+- `P1.5` first standard-illuminant registry: completed
+- `P2` status: color transforms, `deltaE`, and CAT utilities completed
+- `P3` status: first CAM / CAM-UCS forward and inverse paths completed
+- `P3` status: first CRI path completed for `CIE Ra`, `CIE Rf / Rg`, and `TM-30` result objects
+- next priority: move into photobiological metrics
+
+## Design Goals
+
 - spectral foundations: wavelength grids, spacing helpers, interpolation, normalization, and single/batch spectrum models
 - observers and photometry: embedded standard observers, tristimulus integration, radiometric / photometric / quantal power, and mesopic support
 - illuminants and reference sources: blackbody, daylight family, CRI reference sources, and a registry for common CIE illuminants and LED series
 - color kernels: CCT, common XYZ-derived transforms, color difference, and chromatic adaptation including viewing-condition and compiled-adapter workflows
-- appearance models: `CIECAM02`, `CAM16`, `CAM02-UCS`, and `CAM16-UCS` forward / inverse paths plus wrapper APIs on top of the color data models
+- appearance models: first-pass `CIECAM02`, `CAM16`, `CAM02-UCS`, and `CAM16-UCS` forward / inverse paths plus wrapper APIs on top of the color data models
 - color quality metrics: `CIE Ra`, `CIE Rf / Rg`, and structured `TM-30` result objects for single and batch spectral workflows
 
-## Design Goals
+## Why This Repo Exists
 
-`lux-rs` is designed for:
+This repository is not a Rust binding around Python. It is a direct Rust implementation route for the parts of `luxpy` that matter most to numerical core workflows:
 
 - predictable native deployment
 - easier integration into Rust systems
@@ -67,8 +77,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-For spectral workflows, use `Spectrum` and `SpectralMatrix` as the primary API.
-For tristimulus and color workflows, use `Tristimulus` and `TristimulusSet`.
+For color calculations, use `Tristimulus` and `TristimulusSet` as the primary API.
+For spectral calculations, use `Spectrum` and `SpectralMatrix` as the primary API.
+
+## Roadmap
+
+Near-term work, following [`TODO_REFACTOR.md`](./TODO_REFACTOR.md):
+
+1. finish illuminant naming cleanup and alias normalization
+2. start `photobiochem` base metrics
+3. return to broader observer coverage and remaining result-layer polish
+
+Longer-term items such as broader CAM families, TM-30 graphics, photobiological metrics, individual observers, and hyperspectral tooling remain intentionally deferred until the current core stays stable.
 
 ## Relationship To LuxPy
 
