@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 
-use lux::{
+use lux_rs::{
     blackbody, cam16_forward, cam16_ucs_forward, cam16_ucs_inverse, cam16_viewing_conditions,
     cam_inverse, cat_apply, cat_apply_mode, cat_apply_with_conditions, cat_degree_of_adaptation,
     cct_to_xyz, ciecam02_forward, ciecam02_ucs_forward, ciecam02_ucs_inverse,

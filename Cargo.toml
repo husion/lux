@@ -1,12 +1,25 @@
 [package]
-name = "lux"
+name = "lux-rs"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-only"
 description = "Pure Rust lighting and color science library inspired by LuxPy"
+readme = "README.md"
+repository = "https://github.com/husion/lux-rs"
+documentation = "https://docs.rs/lux-rs"
+keywords = ["color", "lighting", "spectrum", "photometry", "cie"]
+categories = ["science"]
+include = [
+    "/src/**/*.rs",
+    "/data/**/*.dat",
+    "/data/**/*.csv",
+    "/Cargo.toml",
+    "/README.md",
+    "/LICENSE",
+]
 
 [lib]
-name = "lux"
+name = "lux_rs"
 path = "src/lib.rs"
 
 [dependencies]
