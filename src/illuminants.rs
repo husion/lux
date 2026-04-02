@@ -51,16 +51,226 @@ const CIE_A_CSV: &str = include_str!("../data/spds/CIE_A.csv");
 const CIE_D65_CSV: &str = include_str!("../data/spds/CIE_D65.csv");
 const CIE_F_SERIES_CSV: &str = include_str!("../data/spds/CIE_F_1to12_1nm.csv");
 const CIE_LED_SERIES_CSV: &str = include_str!("../data/spds/CIE_LED_B1toB5_BH1_RGB1_V1_V2.csv");
-const LED_NAMES: [&str; 9] = [
-    "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5", "LED_BH1", "LED_RGB1", "LED_V1", "LED_V2",
+const STANDARD_ILLUMINANT_NAMES: [&str; 26] = [
+    "A", "D50", "D55", "D65", "D75", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
+    "F11", "F12", "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5", "LED_BH1", "LED_RGB1",
+    "LED_V1", "LED_V2",
+];
+
+#[derive(Debug, Clone, Copy)]
+enum StandardIlluminantSource {
+    SingleCsv(&'static str),
+    Daylight(f64),
+    FSeries(usize),
+    LedSeries(usize),
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StandardIlluminantSpec {
+    name: &'static str,
+    source: StandardIlluminantSource,
+}
+
+const STANDARD_ILLUMINANTS: [StandardIlluminantSpec; 26] = [
+    StandardIlluminantSpec {
+        name: "A",
+        source: StandardIlluminantSource::SingleCsv(CIE_A_CSV),
+    },
+    StandardIlluminantSpec {
+        name: "D50",
+        source: StandardIlluminantSource::Daylight(5000.0),
+    },
+    StandardIlluminantSpec {
+        name: "D55",
+        source: StandardIlluminantSource::Daylight(5500.0),
+    },
+    StandardIlluminantSpec {
+        name: "D65",
+        source: StandardIlluminantSource::SingleCsv(CIE_D65_CSV),
+    },
+    StandardIlluminantSpec {
+        name: "D75",
+        source: StandardIlluminantSource::Daylight(7500.0),
+    },
+    StandardIlluminantSpec {
+        name: "F1",
+        source: StandardIlluminantSource::FSeries(1),
+    },
+    StandardIlluminantSpec {
+        name: "F2",
+        source: StandardIlluminantSource::FSeries(2),
+    },
+    StandardIlluminantSpec {
+        name: "F3",
+        source: StandardIlluminantSource::FSeries(3),
+    },
+    StandardIlluminantSpec {
+        name: "F4",
+        source: StandardIlluminantSource::FSeries(4),
+    },
+    StandardIlluminantSpec {
+        name: "F5",
+        source: StandardIlluminantSource::FSeries(5),
+    },
+    StandardIlluminantSpec {
+        name: "F6",
+        source: StandardIlluminantSource::FSeries(6),
+    },
+    StandardIlluminantSpec {
+        name: "F7",
+        source: StandardIlluminantSource::FSeries(7),
+    },
+    StandardIlluminantSpec {
+        name: "F8",
+        source: StandardIlluminantSource::FSeries(8),
+    },
+    StandardIlluminantSpec {
+        name: "F9",
+        source: StandardIlluminantSource::FSeries(9),
+    },
+    StandardIlluminantSpec {
+        name: "F10",
+        source: StandardIlluminantSource::FSeries(10),
+    },
+    StandardIlluminantSpec {
+        name: "F11",
+        source: StandardIlluminantSource::FSeries(11),
+    },
+    StandardIlluminantSpec {
+        name: "F12",
+        source: StandardIlluminantSource::FSeries(12),
+    },
+    StandardIlluminantSpec {
+        name: "LED_B1",
+        source: StandardIlluminantSource::LedSeries(1),
+    },
+    StandardIlluminantSpec {
+        name: "LED_B2",
+        source: StandardIlluminantSource::LedSeries(2),
+    },
+    StandardIlluminantSpec {
+        name: "LED_B3",
+        source: StandardIlluminantSource::LedSeries(3),
+    },
+    StandardIlluminantSpec {
+        name: "LED_B4",
+        source: StandardIlluminantSource::LedSeries(4),
+    },
+    StandardIlluminantSpec {
+        name: "LED_B5",
+        source: StandardIlluminantSource::LedSeries(5),
+    },
+    StandardIlluminantSpec {
+        name: "LED_BH1",
+        source: StandardIlluminantSource::LedSeries(6),
+    },
+    StandardIlluminantSpec {
+        name: "LED_RGB1",
+        source: StandardIlluminantSource::LedSeries(7),
+    },
+    StandardIlluminantSpec {
+        name: "LED_V1",
+        source: StandardIlluminantSource::LedSeries(8),
+    },
+    StandardIlluminantSpec {
+        name: "LED_V2",
+        source: StandardIlluminantSource::LedSeries(9),
+    },
 ];
 
 pub fn standard_illuminant_names() -> &'static [&'static str] {
-    &[
-        "A", "D50", "D55", "D65", "D75", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
-        "F10", "F11", "F12", "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5", "LED_BH1",
-        "LED_RGB1", "LED_V1", "LED_V2",
-    ]
+    &STANDARD_ILLUMINANT_NAMES
+}
+
+fn canonicalize_illuminant_name(name: &str) -> Option<&'static str> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let normalized = trimmed
+        .to_ascii_uppercase()
+        .replace(' ', "")
+        .replace('\t', "")
+        .replace('\n', "")
+        .replace('\r', "")
+        .replace('-', "")
+        .replace('_', "");
+    let normalized = normalized.strip_prefix("CIE").unwrap_or(&normalized);
+
+    if normalized == "A" {
+        return Some("A");
+    }
+
+    if let Some(suffix) = normalized.strip_prefix('D') {
+        return match suffix {
+            "50" => Some("D50"),
+            "55" => Some("D55"),
+            "65" => Some("D65"),
+            "75" => Some("D75"),
+            _ => None,
+        };
+    }
+
+    if let Some(suffix) = normalized.strip_prefix('F') {
+        return match suffix {
+            "1" => Some("F1"),
+            "2" => Some("F2"),
+            "3" => Some("F3"),
+            "4" => Some("F4"),
+            "5" => Some("F5"),
+            "6" => Some("F6"),
+            "7" => Some("F7"),
+            "8" => Some("F8"),
+            "9" => Some("F9"),
+            "10" => Some("F10"),
+            "11" => Some("F11"),
+            "12" => Some("F12"),
+            _ => None,
+        };
+    }
+
+    if let Some(suffix) = normalized.strip_prefix("LED") {
+        return match suffix {
+            "B1" => Some("LED_B1"),
+            "B2" => Some("LED_B2"),
+            "B3" => Some("LED_B3"),
+            "B4" => Some("LED_B4"),
+            "B5" => Some("LED_B5"),
+            "BH1" => Some("LED_BH1"),
+            "RGB1" => Some("LED_RGB1"),
+            "V1" => Some("LED_V1"),
+            "V2" => Some("LED_V2"),
+            _ => None,
+        };
+    }
+
+    None
+}
+
+fn standard_illuminant_spec(name: &str) -> Option<&'static StandardIlluminantSpec> {
+    let canonical = canonicalize_illuminant_name(name)?;
+    STANDARD_ILLUMINANTS
+        .iter()
+        .find(|spec| spec.name == canonical)
+}
+
+fn load_standard_illuminant_spec(
+    spec: &StandardIlluminantSpec,
+    wavelength_grid: Option<WavelengthGrid>,
+) -> LuxResult<Spectrum> {
+    match spec.source {
+        StandardIlluminantSource::SingleCsv(csv) => load_single_illuminant_csv(csv, wavelength_grid),
+        StandardIlluminantSource::Daylight(cct) => {
+            daylightphase(cct, wavelength_grid, true, false, None)
+        }
+        StandardIlluminantSource::FSeries(index) => {
+            load_series_illuminant_csv(CIE_F_SERIES_CSV, index, wavelength_grid)
+        }
+        StandardIlluminantSource::LedSeries(index) => {
+            load_series_illuminant_csv(CIE_LED_SERIES_CSV, index, wavelength_grid)
+        }
+    }
 }
 
 pub fn blackbody(
@@ -207,31 +417,9 @@ pub fn standard_illuminant(
     name: &str,
     wavelength_grid: Option<WavelengthGrid>,
 ) -> LuxResult<Spectrum> {
-    let key = name.trim().to_ascii_uppercase();
-    match key.as_str() {
-        "A" => load_single_illuminant_csv(CIE_A_CSV, wavelength_grid),
-        "D50" => daylightphase(5000.0, wavelength_grid, true, false, None),
-        "D55" => daylightphase(5500.0, wavelength_grid, true, false, None),
-        "D65" => load_single_illuminant_csv(CIE_D65_CSV, wavelength_grid),
-        "D75" => daylightphase(7500.0, wavelength_grid, true, false, None),
-        _ if key.starts_with('F') => {
-            let index = key[1..]
-                .parse::<usize>()
-                .map_err(|_| LuxError::UnsupportedObserver("unknown standard illuminant"))?;
-            if (1..=12).contains(&index) {
-                load_series_illuminant_csv(CIE_F_SERIES_CSV, index, wavelength_grid)
-            } else {
-                Err(LuxError::UnsupportedObserver("unknown standard illuminant"))
-            }
-        }
-        _ => {
-            if let Some(index) = LED_NAMES.iter().position(|candidate| *candidate == key) {
-                load_series_illuminant_csv(CIE_LED_SERIES_CSV, index + 1, wavelength_grid)
-            } else {
-                Err(LuxError::UnsupportedObserver("unknown standard illuminant"))
-            }
-        }
-    }
+    let spec = standard_illuminant_spec(name)
+        .ok_or(LuxError::UnsupportedObserver("unknown standard illuminant"))?;
+    load_standard_illuminant_spec(spec, wavelength_grid)
 }
 
 pub fn cct_to_xyz(cct: f64, observer: Observer) -> LuxResult<[f64; 3]> {
@@ -476,180 +664,4 @@ fn interpolate_linear(wavelengths: &[f64], values: &[f64], target: f64) -> f64 {
 
 fn linear_segment(x0: f64, y0: f64, x1: f64, y1: f64, x: f64) -> f64 {
     y0 + (y1 - y0) * ((x - x0) / (x1 - x0))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        blackbody, cct_to_xyz, cri_ref, daylightlocus, daylightphase, standard_illuminant,
-        standard_illuminant_names, xyz_to_cct,
-    };
-    use crate::color::Observer;
-    use crate::spectrum::WavelengthGrid;
-
-    #[test]
-    fn computes_relative_blackbody_spectrum() {
-        let spectrum = blackbody(
-            6500.0,
-            Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()),
-            None,
-            true,
-        )
-        .unwrap();
-
-        assert_eq!(
-            spectrum.wavelengths(),
-            &[360.0, 361.0, 362.0, 363.0, 364.0, 365.0]
-        );
-        assert!((spectrum.values()[0] - 0.995_951_160_513_301_6).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 1.011_458_643_342_760_8).abs() < 1e-12);
-    }
-
-    #[test]
-    fn computes_absolute_blackbody_spectrum() {
-        let spectrum = blackbody(
-            6500.0,
-            Some(WavelengthGrid::new(560.0, 560.0, 1.0).unwrap()),
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert!((spectrum.values()[0] - 42_340_048_320_714.19).abs() < 1e-3);
-    }
-
-    #[test]
-    fn normalizes_relative_blackbody_to_560_nm() {
-        let spectrum = blackbody(
-            6500.0,
-            Some(WavelengthGrid::new(560.0, 560.0, 1.0).unwrap()),
-            None,
-            true,
-        )
-        .unwrap();
-
-        assert!((spectrum.values()[0] - 1.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn rejects_non_positive_blackbody_inputs() {
-        let result = blackbody(0.0, None, Some(1.0), true);
-        assert!(result.is_err());
-
-        let result = blackbody(6500.0, None, Some(0.0), true);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn computes_daylight_locus_for_6500k() {
-        let [x_d, y_d] = daylightlocus(6500.0, false, false).unwrap();
-        assert!((x_d - 0.312_778_876_194_811_15).abs() < 1e-12);
-        assert!((y_d - 0.329_183_498_498_040_96).abs() < 1e-12);
-    }
-
-    #[test]
-    fn computes_daylightphase_spectrum() {
-        let spectrum = daylightphase(
-            6500.0,
-            Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()),
-            false,
-            false,
-            None,
-        )
-        .unwrap();
-
-        assert!((spectrum.values()[0] - 0.944_787_686_958_161_2).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 1.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn daylightphase_uses_blackbody_below_4000k() {
-        let spectrum = daylightphase(
-            3500.0,
-            Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()),
-            false,
-            false,
-            None,
-        )
-        .unwrap();
-
-        assert!((spectrum.values()[0] - 0.154_169_092_129_982_6).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 0.168_260_026_564_076_65).abs() < 1e-12);
-    }
-
-    #[test]
-    fn computes_default_cri_ref_spectra() {
-        let spectra = cri_ref(
-            &[3000.0, 6500.0],
-            Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()),
-        )
-        .unwrap();
-
-        assert_eq!(spectra.spectrum_count(), 2);
-        assert!((spectra.spectra()[0][0] - 0.078_162_762_564_806_27).abs() < 1e-12);
-        assert!((spectra.spectra()[0][5] - 0.087_559_911_695_420_67).abs() < 1e-12);
-        assert!((spectra.spectra()[1][0] - 0.944_787_686_958_161_2).abs() < 1e-12);
-        assert!((spectra.spectra()[1][5] - 1.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn converts_cct_to_xyz() {
-        let xyz = cct_to_xyz(6500.0, Observer::Cie1931_2).unwrap();
-        assert!((xyz[0] - 96.878_415_094_956_67).abs() < 1e-6);
-        assert!((xyz[1] - 100.0).abs() < 1e-9);
-        assert!((xyz[2] - 112.116_528_133_993_16).abs() < 1e-6);
-    }
-
-    #[test]
-    fn converts_xyz_to_cct() {
-        let (cct, duv) = xyz_to_cct([100.0, 100.0, 100.0], Observer::Cie1931_2).unwrap();
-        assert!((cct - 5455.485_887_350_497).abs() < 1.0);
-        assert!((duv - (-0.004_423_324_748_595_847)).abs() < 1e-4);
-    }
-
-    #[test]
-    fn loads_standard_illuminant_a() {
-        let spectrum =
-            standard_illuminant("A", Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()))
-                .unwrap();
-        assert!((spectrum.values()[0] - 6.144_62).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 6.947_2).abs() < 1e-12);
-    }
-
-    #[test]
-    fn loads_standard_illuminant_f4() {
-        let spectrum =
-            standard_illuminant("F4", Some(WavelengthGrid::new(380.0, 385.0, 1.0).unwrap()))
-                .unwrap();
-        assert!((spectrum.values()[0] - 0.57).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 0.7).abs() < 1e-12);
-    }
-
-    #[test]
-    fn loads_standard_illuminant_led_b1() {
-        let spectrum = standard_illuminant(
-            "LED_B1",
-            Some(WavelengthGrid::new(380.0, 385.0, 1.0).unwrap()),
-        )
-        .unwrap();
-        assert!((spectrum.values()[0] - 0.0).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 0.01).abs() < 1e-12);
-    }
-
-    #[test]
-    fn loads_nominal_daylight_illuminants() {
-        let spectrum =
-            standard_illuminant("D50", Some(WavelengthGrid::new(360.0, 365.0, 1.0).unwrap()))
-                .unwrap();
-        assert!((spectrum.values()[0] - 0.940_694_581_416_273_4).abs() < 1e-12);
-        assert!((spectrum.values()[5] - 1.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn exposes_standard_illuminant_names() {
-        assert!(standard_illuminant_names().contains(&"A"));
-        assert!(standard_illuminant_names().contains(&"D65"));
-        assert!(standard_illuminant_names().contains(&"F4"));
-        assert!(standard_illuminant_names().contains(&"LED_B1"));
-    }
 }

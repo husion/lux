@@ -4,7 +4,7 @@
 
 ## 1. 当前仓库状态
 
-- Rust crate 当前已完成一版 `P0` 基础数值内核，已具备：
+- Rust crate 当前已经完成从 `P0` 到 `P3` 主链的一版可用实现，已具备：
   - 波长网格生成 `getwlr`
   - 波长间距计算 `getwld`
   - 单谱数据模型 `Spectrum`
@@ -31,6 +31,10 @@
   - 嵌入式标准观察者：
     - `1931_2`
     - `1964_10`
+    - `2006_2`
+    - `2006_10`
+    - `2015_2`
+    - `2015_10`
   - CIE 191:2010 mesopic 支持：
     - `get_cie_mesopic_adaptation`
     - `vlbar_cie_mesopic`
@@ -43,6 +47,14 @@
   - CCT / Duv：
     - `xyz_to_cct`
     - `cct_to_xyz`
+  - 固定标准光源数据集：
+    - `A`
+    - `D50` / `D55` / `D65` / `D75`
+    - `F1..F12`
+    - `LED_B1..B5`
+    - `LED_BH1`
+    - `LED_RGB1`
+    - `LED_V1` / `LED_V2`
   - 常用颜色空间变换：
     - `XYZ <-> Yxy`
     - `XYZ <-> Yuv`
@@ -59,18 +71,63 @@
     - `CatContext`
     - `CatAdapter`
     - `deltaE`
+  - 色貌模型：
+    - `CIECAM02`
+    - `CAM16`
+    - `CAM02-UCS`
+    - `CAM16-UCS`
+    - 对应 forward / inverse wrapper
+  - 显色评价：
+    - `CIE Ra`
+    - `CIE Rf / Rg`
+    - `TM-30` 结果对象
+    - `IES` alias API
 - 当前相关文件：
   - `src/spectrum.rs`
   - `src/photometry.rs`
   - `src/color.rs`
   - `src/illuminants.rs`
+  - `src/cam.rs`
+  - `src/cri.rs`
   - `src/error.rs`
   - `data/cmfs/`
   - `data/spds/`
+  - `data/rfls/`
 - 当前测试状态：
-  - Rust 单测：130
+  - 源码内单测：64
+  - `tests/` 集成测试：68
   - Python parity 集成测试：1
   - `cargo test` 全通过
+
+## 1.1 当前阶段判断
+
+- `P0`：已完成
+- `P1`：已完成
+- `P1.5`：已完成
+- `P2`：已完成
+- `P3`：主链已完成第一版，可继续做结果层和 API 层重构
+- `P4`：尚未开始
+
+## 1.2 当前重构重点
+
+当前最值得继续推进的不是再补一条大功能线，而是对已有实现做 API 和资产层收敛：
+
+- 标准观察者扩展
+  - 补 `2006_2` / `2006_10`：已完成
+  - 补 `2015_2` / `2015_10`：已完成
+  - 观察者附属常数 / 矩阵建模：已完成
+  - observer registry / metadata 收敛：已完成
+  - 规范名、枚举列表、字符串解析入口：已完成
+- illuminant registry 整理
+  - 命名别名归一化：已完成首版
+  - canonical name 和 lookup 分离：已完成
+  - 名称列表、别名解析、加载入口统一到 registry：已完成
+- 光谱插值能力补强
+  - 从当前最小线性实现走向可配置插值 / 外推策略
+- API 清理
+  - 收敛单谱 / 批量谱接口
+  - 收敛 wrapper 和核心实现的边界
+  - 清理错误类型和历史命名耦合
 
 ## 2. luxpy 顶层探索结论
 
@@ -246,14 +303,14 @@
 | 光谱插值与归一化 | `cie_interp`、`spd_normalize` | 光谱底座 | 中 | 高 | P0 | `luxpy` 核心语义之一 |
 | 标准观察者与 CMF 数据 | `_CMF`、`xyzbar`、`vlbar`、`vlbar_cie_mesopic` | 光谱底座、插值 | 低 | 中 | P0 | 后续 CCT/CAT/CAM/CRI 都依赖 |
 | 基础积分链路 | `spd_to_power`、`spd_to_ler`、`spd_to_xyz` | 上述全部 | 低到中 | 中 | P0 | 核心数值计算心脏 |
-| 参考光源 | `blackbody`、`daylightlocus`、`daylightphase`、`cri_ref` | `spd_to_xyz`、CMF、插值 | 中 | 中到高 | P1 | 功能价值高，也是 CRI 基础 |
-| 常用颜色空间变换 | `XYZ<->Yxy/Yuv/Lab/Luv/LMS/sRGB` | `spd_to_xyz`、白点/CMF | 低 | 中 | P1 | 使用频率高 |
-| CCT / Duv | `xyz_to_cct`、`cct_to_xyz` | `spd_to_xyz`、颜色空间、参考光源 | 中到高 | 高 | P1 | 建议先做一条主算法 |
-| 固定标准光源数据集 | CIE `A`、`D50/D55/D65/D75`、`F1..F12`、CIE LED 系列 | 光谱底座、插值、统一 illuminant API | 低到中 | 中 | P1.5 | 主要是数据资产、命名检索与重采样接口 |
-| 色适应 | `cat.apply()`、适应度函数 | XYZ 变换、观察者矩阵 | 中 | 中到高 | P2 | 是 CAM 前置 |
-| 色差 | `deltaE` | Lab/UCS 等颜色空间 | 低 | 中 | P2 | 依赖清晰，可中期交付 |
-| 色貌模型 | CIECAM02、CAM16、CAM-UCS、ZCAM、CAM15u、CAM18sl | CAT、XYZ、观察条件 | 高 | 很高 | P3 | 体系大，不宜过早展开 |
-| 显色评价 | `cri`、TM-30、`Rf/Rg`、CIE Ra | 参考光源、XYZ、色空间、CAT、数据库 | 高 | 很高 | P3 | 强依赖全链路稳定 |
+| 参考光源 | `blackbody`、`daylightlocus`、`daylightphase`、`cri_ref` | `spd_to_xyz`、CMF、插值 | 中 | 中到高 | 已完成首版 | 后续主要是命名层、更多数据集和 API 收敛 |
+| 常用颜色空间变换 | `XYZ<->Yxy/Yuv/Lab/Luv/LMS/sRGB` | `spd_to_xyz`、白点/CMF | 低 | 中 | 已完成首版 | 后续主要是结果类型与批量 API 清理 |
+| CCT / Duv | `xyz_to_cct`、`cct_to_xyz` | `spd_to_xyz`、颜色空间、参考光源 | 中到高 | 高 | 已完成首版 | 后续可考虑精度和算法路线扩展 |
+| 固定标准光源数据集 | CIE `A`、`D50/D55/D65/D75`、`F1..F12`、CIE LED 系列 | 光谱底座、插值、统一 illuminant API | 低到中 | 中 | 已完成首版 | 下一步是 alias、registry 和资产扩展 |
+| 色适应 | `cat.apply()`、适应度函数 | XYZ 变换、观察者矩阵 | 中 | 中到高 | 已完成首版 | 后续可继续补矩阵族和 API 分层 |
+| 色差 | `deltaE` | Lab/UCS 等颜色空间 | 低 | 中 | 已完成首版 | 可继续补更多公式 |
+| 色貌模型 | CIECAM02、CAM16、CAM-UCS、ZCAM、CAM15u、CAM18sl | CAT、XYZ、观察条件 | 高 | 很高 | 已完成部分 | `CIECAM02` / `CAM16` / `CAM-UCS` 已落地，其他模型仍未做 |
+| 显色评价 | `cri`、TM-30、`Rf/Rg`、CIE Ra | 参考光源、XYZ、色空间、CAT、数据库 | 高 | 很高 | 已完成部分 | `CIE Ra`、`CIE Rf/Rg`、`TM-30` 已落地，后续是结果层与数据层完善 |
 | 光生物与节律 | `photbiochem`、alpha-opic、EDI、DER、ELR、BLH | SPD 积分、作用谱数据库 | 中 | 中 | P3 | 独立性较好，可后置并行 |
 | 个体观察者模型 | `indvcmf` | CMF、矩阵、模型参数 | 高 | 高 | P4 | 研究型扩展，后置 |
 | 高光谱图像 | `hypspcim` | 光谱底座、反射率库、颜色变换 | 高 | 很高 | P4 | 工程量大，后置 |
