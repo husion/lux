@@ -130,28 +130,19 @@ pub fn spd_to_ciera_result(spectrum: &Spectrum) -> LuxResult<CieRaResult> {
 }
 
 pub fn spds_to_ciera(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
-    Ok(spds_to_ciera_result(spectra)?
-        .into_iter()
-        .map(|result| result.ra)
-        .collect())
+    Ok(project_batch_results(spds_to_ciera_result(spectra)?, |result| {
+        result.ra
+    }))
 }
 
 pub fn spds_to_ciera_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRaResult>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_ciera_result(&s)))
-        .collect()
+    map_spectral_matrix(spectra, spd_to_ciera_result)
 }
 
 pub fn spds_to_ciera_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_ciera_special(&s)))
-        .collect()
+    Ok(project_batch_results(spds_to_ciera_result(spectra)?, |result| {
+        result.ri
+    }))
 }
 
 pub fn spd_to_cierf(spectrum: &Spectrum) -> LuxResult<f64> {
@@ -276,12 +267,7 @@ pub fn spds_to_cierf(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
 }
 
 pub fn spds_to_cierf_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRfResult>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_cierf_result(&s)))
-        .collect()
+    map_spectral_matrix(spectra, spd_to_cierf_result)
 }
 
 pub fn spds_to_iesrf(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
@@ -293,12 +279,7 @@ pub fn spds_to_iesrf_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRfResu
 }
 
 pub fn spds_to_tm30_result(spectra: &SpectralMatrix) -> LuxResult<Vec<Tm30Result>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_tm30_result(&s)))
-        .collect()
+    map_spectral_matrix(spectra, spd_to_tm30_result)
 }
 
 pub fn spds_to_ies_tm30_result(spectra: &SpectralMatrix) -> LuxResult<Vec<Tm30Result>> {
@@ -306,12 +287,9 @@ pub fn spds_to_ies_tm30_result(spectra: &SpectralMatrix) -> LuxResult<Vec<Tm30Re
 }
 
 pub fn spds_to_cierg(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_cierg(&s)))
-        .collect()
+    Ok(project_batch_results(spds_to_cierf_result(spectra)?, |result| {
+        result.rg
+    }))
 }
 
 pub fn spds_to_iesrg(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
@@ -319,16 +297,32 @@ pub fn spds_to_iesrg(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
 }
 
 pub fn spds_to_cierf_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
-    spectra
-        .spectra()
-        .iter()
-        .map(|values| Spectrum::new(spectra.wavelengths().to_vec(), values.clone()))
-        .map(|spectrum| spectrum.and_then(|s| spd_to_cierf_special(&s)))
-        .collect()
+    Ok(project_batch_results(spds_to_cierf_result(spectra)?, |result| {
+        result.rfi
+    }))
 }
 
 pub fn spds_to_iesrf_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
     spds_to_cierf_special(spectra)
+}
+
+fn map_spectral_matrix<T>(
+    spectra: &SpectralMatrix,
+    mut map_spectrum: impl FnMut(&Spectrum) -> LuxResult<T>,
+) -> LuxResult<Vec<T>> {
+    let wavelengths = spectra.wavelengths().to_vec();
+    spectra
+        .spectra()
+        .iter()
+        .map(|values| {
+            let spectrum = Spectrum::new(wavelengths.clone(), values.clone())?;
+            map_spectrum(&spectrum)
+        })
+        .collect()
+}
+
+fn project_batch_results<T, U>(results: Vec<T>, project_result: impl FnMut(T) -> U) -> Vec<U> {
+    results.into_iter().map(project_result).collect()
 }
 
 fn cie_ra_samples() -> LuxResult<SpectralMatrix> {
@@ -655,11 +649,13 @@ fn clamp01(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        spd_to_ciera, spd_to_ciera_result, spd_to_cierf, spd_to_cierf_result, spd_to_cierg,
-        spd_to_ies_tm30_result, spd_to_iesrf, spd_to_iesrf_result, spd_to_iesrf_special,
-        spd_to_iesrg, spd_to_tm30_result, spds_to_ciera, spds_to_ciera_result, spds_to_cierf,
-        spds_to_cierf_result, spds_to_ies_tm30_result, spds_to_iesrf, spds_to_iesrf_result,
-        spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result,
+        spd_to_ciera, spd_to_ciera_result, spd_to_ciera_special, spd_to_cierf,
+        spd_to_cierf_result, spd_to_cierf_special, spd_to_cierg, spd_to_ies_tm30_result,
+        spd_to_iesrf, spd_to_iesrf_result, spd_to_iesrf_special, spd_to_iesrg,
+        spd_to_tm30_result, spds_to_ciera, spds_to_ciera_result, spds_to_ciera_special,
+        spds_to_cierf, spds_to_cierf_result, spds_to_cierf_special, spds_to_cierg,
+        spds_to_ies_tm30_result, spds_to_iesrf, spds_to_iesrf_result, spds_to_iesrf_special,
+        spds_to_iesrg, spds_to_tm30_result,
     };
     use crate::illuminants::standard_illuminant;
     use crate::spectrum::{SpectralMatrix, Spectrum};
@@ -753,6 +749,22 @@ mod tests {
     }
 
     #[test]
+    fn ciera_batch_special_matches_scalar_path() {
+        let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
+        let d65 = standard_illuminant("D65", grid).unwrap();
+        let f4 = standard_illuminant("F4", grid).unwrap();
+        let spectra = SpectralMatrix::new(
+            d65.wavelengths().to_vec(),
+            vec![d65.values().to_vec(), f4.values().to_vec()],
+        )
+        .unwrap();
+        let batch = spds_to_ciera_special(&spectra).unwrap();
+        assert_eq!(batch.len(), 2);
+        assert_eq!(batch[0], spd_to_ciera_special(&d65).unwrap());
+        assert_eq!(batch[1], spd_to_ciera_special(&f4).unwrap());
+    }
+
+    #[test]
     fn cierf_batch_result_matches_scalar_path() {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
@@ -766,6 +778,38 @@ mod tests {
         assert_eq!(batch.len(), 2);
         assert_eq!(batch[0], spd_to_cierf_result(&d65).unwrap());
         assert_eq!(batch[1], spd_to_cierf_result(&f4).unwrap());
+    }
+
+    #[test]
+    fn cierg_batch_matches_scalar_path() {
+        let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
+        let d65 = standard_illuminant("D65", grid).unwrap();
+        let f4 = standard_illuminant("F4", grid).unwrap();
+        let spectra = SpectralMatrix::new(
+            d65.wavelengths().to_vec(),
+            vec![d65.values().to_vec(), f4.values().to_vec()],
+        )
+        .unwrap();
+        let batch = spds_to_cierg(&spectra).unwrap();
+        assert_eq!(batch.len(), 2);
+        assert!((batch[0] - spd_to_cierg(&d65).unwrap()).abs() < 1e-9);
+        assert!((batch[1] - spd_to_cierg(&f4).unwrap()).abs() < 1e-9);
+    }
+
+    #[test]
+    fn cierf_batch_special_matches_scalar_path() {
+        let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
+        let d65 = standard_illuminant("D65", grid).unwrap();
+        let f4 = standard_illuminant("F4", grid).unwrap();
+        let spectra = SpectralMatrix::new(
+            d65.wavelengths().to_vec(),
+            vec![d65.values().to_vec(), f4.values().to_vec()],
+        )
+        .unwrap();
+        let batch = spds_to_cierf_special(&spectra).unwrap();
+        assert_eq!(batch.len(), 2);
+        assert_eq!(batch[0], spd_to_cierf_special(&d65).unwrap());
+        assert_eq!(batch[1], spd_to_cierf_special(&f4).unwrap());
     }
 
     #[test]
@@ -867,6 +911,22 @@ mod tests {
             .map(|bin| bin.hue_shift_rad.abs())
             .fold(0.0, f64::max);
         assert!(max_abs_hue_shift < 0.05);
+    }
+
+    #[test]
+    fn tm30_batch_result_matches_scalar_path() {
+        let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
+        let d65 = standard_illuminant("D65", grid).unwrap();
+        let f4 = standard_illuminant("F4", grid).unwrap();
+        let spectra = SpectralMatrix::new(
+            d65.wavelengths().to_vec(),
+            vec![d65.values().to_vec(), f4.values().to_vec()],
+        )
+        .unwrap();
+        let batch = spds_to_tm30_result(&spectra).unwrap();
+        assert_eq!(batch.len(), 2);
+        assert_eq!(batch[0], spd_to_tm30_result(&d65).unwrap());
+        assert_eq!(batch[1], spd_to_tm30_result(&f4).unwrap());
     }
 
     #[test]
