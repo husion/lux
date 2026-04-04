@@ -1,2 +1,4 @@
 luxpy/
 target/
+
+__pycache__/
