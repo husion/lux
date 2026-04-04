@@ -1,25 +1,28 @@
+"""Top-level smoke script that preserves the existing parity invocation contract."""
+
+from itertools import chain
 from pathlib import Path
 
-from baseline_color import generate_color_baselines
-from baseline_observers import generate_observer_baselines
-from baseline_sources import generate_source_baselines
-from baseline_spectra import generate_spectral_baselines
-
-
-BASELINE_GROUPS = (
-    generate_observer_baselines,
-    generate_color_baselines,
-    generate_spectral_baselines,
-)
+from adaptation_cam_baselines import iter_adaptation_cam_baselines
+from baseline_helpers import print_pairs
+from color_baselines import iter_color_baselines, iter_display_color_baselines
+from cri_illuminant_baselines import iter_cri_illuminant_baselines
+from observer_baselines import iter_observer_baselines
+from spectral_baselines import iter_spectral_baselines
 
 
 def main() -> None:
     root = Path(__file__).resolve().parents[2]
-    for generator in BASELINE_GROUPS:
-        for key, value in generator():
-            print(f"{key}={value}")
-    for key, value in generate_source_baselines(root):
-        print(f"{key}={value}")
+    print_pairs(
+        chain(
+            iter_observer_baselines(),
+            iter_color_baselines(),
+            iter_adaptation_cam_baselines(),
+            iter_display_color_baselines(),
+            iter_spectral_baselines(),
+            iter_cri_illuminant_baselines(root),
+        )
+    )
 
 
 if __name__ == "__main__":
