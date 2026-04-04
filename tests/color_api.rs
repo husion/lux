@@ -1,14 +1,14 @@
 mod common;
 
+use common::{observer_1931, WHITE_D65, WHITE_E, XYZ_BRIGHT, XYZ_SAMPLE, XYZ_SAMPLE_ALT};
 use core::str::FromStr;
+use lux_rs::CamSurround as ModelCamSurround;
 use lux_rs::{
     cam16_viewing_conditions, ciecam02_viewing_conditions, delta_e, delta_e_cie76,
     delta_e_ciede2000, get_cie_mesopic_adaptation, lab_to_xyz, lms_to_xyz, luv_to_xyz, srgb_to_xyz,
     vlbar_cie_mesopic, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv, xyz_to_yxy,
     yuv_to_xyz, yxy_to_xyz, CamUcsType, DeltaEFormula, Observer, Tristimulus, TristimulusSet,
 };
-use lux_rs::CamSurround as ModelCamSurround;
-use common::{observer_1931, WHITE_D65, WHITE_E, XYZ_BRIGHT, XYZ_SAMPLE, XYZ_SAMPLE_ALT};
 
 #[test]
 fn loads_standard_observer() {
@@ -20,7 +20,10 @@ fn loads_standard_observer() {
 
 #[test]
 fn lists_canonical_observer_names() {
-    let names: Vec<_> = Observer::all().iter().map(|observer| observer.name()).collect();
+    let names: Vec<_> = Observer::all()
+        .iter()
+        .map(|observer| observer.name())
+        .collect();
     assert_eq!(
         names,
         vec!["1931_2", "1964_10", "2006_2", "2006_10", "2015_2", "2015_10"]
@@ -30,11 +33,23 @@ fn lists_canonical_observer_names() {
 #[test]
 fn parses_observer_aliases() {
     assert_eq!(Observer::from_name("1931_2").unwrap(), Observer::Cie1931_2);
-    assert_eq!(Observer::from_name("CIE 1964 10").unwrap(), Observer::Cie1964_10);
-    assert_eq!(Observer::from_name("cie-2006_2").unwrap(), Observer::Cie2006_2);
-    assert_eq!(Observer::from_name("2006-10").unwrap(), Observer::Cie2006_10);
+    assert_eq!(
+        Observer::from_name("CIE 1964 10").unwrap(),
+        Observer::Cie1964_10
+    );
+    assert_eq!(
+        Observer::from_name("cie-2006_2").unwrap(),
+        Observer::Cie2006_2
+    );
+    assert_eq!(
+        Observer::from_name("2006-10").unwrap(),
+        Observer::Cie2006_10
+    );
     assert_eq!(Observer::from_name("2015 2").unwrap(), Observer::Cie2015_2);
-    assert_eq!(Observer::from_name("2015_10").unwrap(), Observer::Cie2015_10);
+    assert_eq!(
+        Observer::from_name("2015_10").unwrap(),
+        Observer::Cie2015_10
+    );
     assert_eq!(Observer::from_name("1931").unwrap(), Observer::Cie1931_2);
     assert_eq!(Observer::from_name("1964").unwrap(), Observer::Cie1964_10);
 }
@@ -285,15 +300,25 @@ fn batch_color_space_transforms_match_scalar_versions() {
     let xyz = [XYZ_SAMPLE, XYZ_SAMPLE_ALT];
     let xyz_set = TristimulusSet::new(xyz.to_vec());
     let lab = xyz_set.xyz_to_lab(WHITE_E).into_vec();
-    assert_eq!(lab, vec![xyz_to_lab(xyz[0], WHITE_E), xyz_to_lab(xyz[1], WHITE_E)]);
     assert_eq!(
-        TristimulusSet::new(lab.clone()).lab_to_xyz(WHITE_E).into_vec(),
+        lab,
+        vec![xyz_to_lab(xyz[0], WHITE_E), xyz_to_lab(xyz[1], WHITE_E)]
+    );
+    assert_eq!(
+        TristimulusSet::new(lab.clone())
+            .lab_to_xyz(WHITE_E)
+            .into_vec(),
         vec![lab_to_xyz(lab[0], WHITE_E), lab_to_xyz(lab[1], WHITE_E)]
     );
     let luv = xyz_set.xyz_to_luv(WHITE_E).into_vec();
-    assert_eq!(luv, vec![xyz_to_luv(xyz[0], WHITE_E), xyz_to_luv(xyz[1], WHITE_E)]);
     assert_eq!(
-        TristimulusSet::new(luv.clone()).luv_to_xyz(WHITE_E).into_vec(),
+        luv,
+        vec![xyz_to_luv(xyz[0], WHITE_E), xyz_to_luv(xyz[1], WHITE_E)]
+    );
+    assert_eq!(
+        TristimulusSet::new(luv.clone())
+            .luv_to_xyz(WHITE_E)
+            .into_vec(),
         vec![luv_to_xyz(luv[0], WHITE_E), luv_to_xyz(luv[1], WHITE_E)]
     );
 }
@@ -305,7 +330,10 @@ fn batch_lms_and_srgb_transforms_match_scalar_versions() {
         .xyz_to_lms(Observer::Cie1931_2)
         .unwrap()
         .into_vec();
-    assert_eq!(lms_many, vec![xyz_to_lms(xyz[0], Observer::Cie1931_2).unwrap(); 2]);
+    assert_eq!(
+        lms_many,
+        vec![xyz_to_lms(xyz[0], Observer::Cie1931_2).unwrap(); 2]
+    );
     let lms_input = [lms_many[0], lms_many[1]];
     assert_eq!(
         TristimulusSet::new(lms_input.to_vec())
@@ -420,7 +448,9 @@ fn tristimulus_set_wrapper_matches_batch_transforms() {
         .values()
         .iter()
         .copied()
-        .map(|value| lux_rs::ciecam02_ucs_forward(value, ciecam02_conditions, CamUcsType::Ucs).unwrap())
+        .map(|value| {
+            lux_rs::ciecam02_ucs_forward(value, ciecam02_conditions, CamUcsType::Ucs).unwrap()
+        })
         .collect::<Vec<_>>();
     assert_eq!(cam_ucs_many, cam_ucs_scalar);
     let ucs_triplets = TristimulusSet::new(
@@ -464,8 +494,11 @@ fn converts_xyz_to_lms_for_1931() {
 
 #[test]
 fn converts_lms_to_xyz_for_1931() {
-    let xyz = lms_to_xyz([0.422_247_5, 0.545_850_000_000_000_1, 0.25], Observer::Cie1931_2)
-        .unwrap();
+    let xyz = lms_to_xyz(
+        [0.422_247_5, 0.545_850_000_000_000_1, 0.25],
+        Observer::Cie1931_2,
+    )
+    .unwrap();
     assert!((xyz[0] - 0.25).abs() < 1e-12);
     assert!((xyz[1] - 0.5).abs() < 1e-12);
     assert!((xyz[2] - 0.25).abs() < 1e-12);

@@ -1,7 +1,7 @@
 mod common;
 
-use lux_rs::{getwld, getwlr, SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid};
 use common::{observer_1931, spectrum_400_420, spectrum_555_556};
+use lux_rs::{getwld, getwlr, SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid};
 
 #[test]
 fn grid_matches_luxpy_style_range() {

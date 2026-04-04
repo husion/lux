@@ -135,9 +135,9 @@ fn exposes_standard_illuminant_names() {
     assert_eq!(
         standard_illuminant_names(),
         &[
-            "A", "D50", "D55", "D65", "D75", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8",
-            "F9", "F10", "F11", "F12", "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5",
-            "LED_BH1", "LED_RGB1", "LED_V1", "LED_V2",
+            "A", "D50", "D55", "D65", "D75", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
+            "F10", "F11", "F12", "LED_B1", "LED_B2", "LED_B3", "LED_B4", "LED_B5", "LED_BH1",
+            "LED_RGB1", "LED_V1", "LED_V2",
         ]
     );
 }

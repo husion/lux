@@ -1,7 +1,7 @@
 mod common;
 
-use lux_rs::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType, Spectrum};
 use common::{matrix_555_556, observer_1931, spectrum_555_556};
+use lux_rs::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType, Spectrum};
 
 #[test]
 fn computes_radiometric_power() {

@@ -260,7 +260,9 @@ fn load_standard_illuminant_spec(
     wavelength_grid: Option<WavelengthGrid>,
 ) -> LuxResult<Spectrum> {
     match spec.source {
-        StandardIlluminantSource::SingleCsv(csv) => load_single_illuminant_csv(csv, wavelength_grid),
+        StandardIlluminantSource::SingleCsv(csv) => {
+            load_single_illuminant_csv(csv, wavelength_grid)
+        }
         StandardIlluminantSource::Daylight(cct) => {
             daylightphase(cct, wavelength_grid, true, false, None)
         }
