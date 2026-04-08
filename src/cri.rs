@@ -605,7 +605,8 @@ fn tm30_hue_bin_summary(
     }
 
     let test_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.test_jab).collect::<Vec<_>>();
-    let reference_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.reference_jab).collect::<Vec<_>>();
+    let reference_points: Vec<[f64; 3]> =
+        bins.iter().map(|bin| bin.reference_jab).collect::<Vec<_>>();
     Ok(Tm30HueSummary {
         bins,
         test_area: polygon_area_ab(&test_points),
@@ -661,7 +662,7 @@ mod tests {
         spds_to_iesrf_result, spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result,
     };
     use crate::illuminants::standard_illuminant;
-    use crate::spectrum::{Spectrum};
+    use crate::spectrum::Spectrum;
 
     #[test]
     fn ciera_d65_is_near_perfect() {

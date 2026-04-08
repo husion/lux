@@ -20,13 +20,13 @@ The crate currently includes:
 
 ## Design Goals
 
-- spectral foundations: wavelength grids, spacing helpers, interpolation, normalization, and single/batch spectrum models
+- spectral foundations: wavelength grids, spacing helpers, interpolation, normalization, and unified single/batch `Spectrum` workflows
 - observers and photometry: embedded standard observers, tristimulus integration, radiometric / photometric / quantal power, and mesopic support
 - illuminants and reference sources: blackbody, daylight family, CRI reference sources, and a registry for common CIE illuminants and LED series
 - color kernels: CCT, common XYZ-derived transforms, color difference, and chromatic adaptation including viewing-condition and compiled-adapter workflows
 - appearance models: first-pass `CIECAM02`, `CAM16`, `CAM02-UCS`, and `CAM16-UCS` forward / inverse paths plus wrapper APIs on top of the color data models
 - color quality metrics: `CIE Ra`, `CIE Rf / Rg`, and structured `TM-30` result objects for single and batch spectral workflows
-- advanced detector utilities: first-pass spectral mismatch (`f1′`) and correction-factor workflows on top of `Spectrum` / `Spectrum`
+- advanced detector utilities: first-pass spectral mismatch (`f1′`) and correction-factor workflows on top of `Spectrum`
 - advanced observer utilities: first-pass `indvcmf` deterministic LMS / XYZ CMF generation for one observer profile
 
 ## Why This Repo Exists
@@ -82,17 +82,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 For color calculations, use `Tristimulus` as the primary batch API (`1` row represents a single XYZ-like sample).
-For spectral calculations, use `Spectrum` and `SpectralMatrix` as the primary API.
+For spectral calculations, use `Spectrum` as the primary API (`1` row represents a single SPD).
 
 ## API Shape Conventions
 
 Phase 1 convergence keeps the current numerical behavior, but makes the intended public API shape explicit:
 
-- use `Spectrum` for one spectral power distribution and `SpectralMatrix` for aligned batch spectral workflows
-- use `Tristimulus` for aligned batch XYZ-like color workflows; represent a single item as a one-row batch
-- prefer single-item public entry points first; add batch variants only when the same operation needs to run over aligned multi-row data
-- when both forms exist, keep singular/plural naming aligned, for example `spd_to_*` for `Spectrum` and `spds_to_*` for `SpectralMatrix`
-- source constructors that produce one SPD should return `Spectrum`; constructors that naturally produce multiple SPDs should return `SpectralMatrix`
+- use `Spectrum` for both one SPD and aligned multi-SPD workflows; represent a single SPD as a one-row batch
+- use `Tristimulus` for aligned XYZ-like color workflows; represent a single item as a one-row batch
+- keep scalar and batch paths numerically aligned, for example free `spd_to_*` helpers and row-wise `Spectrum::spd_to_*` batch methods
+- prefer constructors that keep row alignment explicit (`Spectrum::new(...)` and `Tristimulus::new(...)`), with `Tristimulus::from_single(...)` as convenience for one item
 - fixed-size leaf kernels may still use raw `[f64; 3]` values internally, but public wrappers should prefer `Tristimulus` when they represent semantic color results
 - wrapper APIs should stay thin: the single-item and batch forms should share one core implementation rather than fork behavior
 

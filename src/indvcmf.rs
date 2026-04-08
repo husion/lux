@@ -1,6 +1,6 @@
 use crate::color::Matrix3;
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{Spectrum};
+use crate::spectrum::Spectrum;
 
 const ASANO_LMS_ABSORBANCE: &str = include_str!("../data/indvcmf/asano_cie2006_Alms.dat");
 const ASANO_RELATIVE_MACULAR_DENSITY: &str =

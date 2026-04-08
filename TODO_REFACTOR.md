@@ -8,7 +8,7 @@
   - 波长网格生成 `getwlr`
   - 波长间距计算 `getwld`
   - 单谱数据模型 `Spectrum`
-  - 批量谱数据模型 `SpectralMatrix`
+  - 统一谱数据模型 `Spectrum`（单条与批量均使用行对齐表示）
   - 最小版线性 `cie_interp`
     - 线性插值
     - 线性外推
@@ -440,7 +440,7 @@ P0 验收完成标志：
 - 当前已补上基于环境参数的适应度 `D` 计算，以及基于观察条件的上层适配入口。
 - 当前已补上 `CatMode` 策略层，覆盖 `1>2`、`1>0`、`0>2`、`1>0>2`。
 - 当前已补上更高层观察条件工具，包括 `CatViewingConditions`、`CatContext`，以及 `cat_apply_context`。
-- 当前已补上可复用的批量/矩阵风格 CAT 封装，包括预编译 `CatAdapter`、`cat_compile*`、`Tristimulus::cat_apply_adapter()`、`TristimulusSet::cat_apply_adapter()`。
+- 当前已补上可复用的批量/矩阵风格 CAT 封装，包括预编译 `CatAdapter`、`cat_compile*`、`Tristimulus::cat_apply_adapter()`。
 - 当前尚未实现的是更多文献模型，以及更完整的高层 CAT utility 生态（例如更系统的预计算/缓存策略与进一步的批量工作流封装）。
 - 当前已落地 `deltaE` 首批主路径：
   - [x] `CIE76`
@@ -472,7 +472,7 @@ P0 验收完成标志：
 - 当前这些能力主要负责观察条件、白点适应与响应压缩等底层公共计算，为后续 `CIECAM02` / `CAM16` 正式前向模型提供共享基础。
 - 当前已开始接入首批正式前向模型，提供 `cam_forward()`、`cam16_forward()`、`ciecam02_forward()` 以及 `CamAppearance`，可输出 `J/Q/C/M/s/h` 与 `aM/bM`、`aC/bC`。
 - 当前已补上 `J+aM+bM -> XYZ` 反向路径，以及 `CAM02-UCS / CAM16-UCS` 的 `J'a'b' <-> XYZ` 主路径。
-- 当前已补上 `Tristimulus/TristimulusSet` 风格 CAM / CAM-UCS wrapper。
+- 当前已补上 `Tristimulus` 风格 CAM / CAM-UCS wrapper。
 - 当前已补上更高层 `xyz_to_jab*` / `jab*_to_xyz` 便捷 API，以及统一 `CamCoordinates / CamSpace` 坐标入口。
 - 当前已补上 `CIE Ra`、`CIE Rf / Rg` 主路径，样品数据已迁入仓库自有 `data/rfls/`，不再依赖本地 `luxpy` 安装路径。
 - 当前已补上 `IES TM-30` 风格别名入口，直接复用 `CIE 224` 的 `Rf / Rg` 数值主路径。

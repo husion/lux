@@ -12,8 +12,8 @@ use lux_rs::{
     spd_to_cierg, spd_to_ler, spd_to_power, spd_to_xyz, srgb_to_xyz, standard_illuminant,
     vlbar_cie_mesopic, xyz_to_cct, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv,
     xyz_to_yxy, yuv_to_xyz, yxy_to_xyz, CamAppearance, CamSurround, CamUcsAppearance, CamUcsType,
-    CatMode, CatSurround, CatTransform, Observer, PowerType, Spectrum, Spectrum,
-    SpectrumNormalization, WavelengthGrid,
+    CatMode, CatSurround, CatTransform, Observer, PowerType, Spectrum, SpectrumNormalization,
+    WavelengthGrid,
 };
 
 fn parse_scalar(value: &str) -> f64 {
@@ -1023,11 +1023,10 @@ fn current_rust_basics_match_luxpy() {
         1e-9,
     );
 
-    let xyz_many_absolute =
-        Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
-            .unwrap()
-            .spd_to_xyz(&observer, false)
-            .unwrap();
+    let xyz_many_absolute = Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+        .unwrap()
+        .spd_to_xyz(&observer, false)
+        .unwrap();
     let xyz_many_absolute_flat: Vec<f64> = xyz_many_absolute
         .into_iter()
         .flat_map(|xyz| xyz.into_iter())

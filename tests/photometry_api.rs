@@ -1,7 +1,7 @@
 mod common;
 
 use common::{matrix_555_556, observer_1931, spectrum_555_556};
-use lux_rs::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType, SpectralMatrix, Spectrum};
+use lux_rs::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType, Spectrum};
 
 #[test]
 fn computes_radiometric_power() {
@@ -46,7 +46,7 @@ fn computes_relative_xyz() {
 #[test]
 fn one_row_batch_photometry_preserves_numeric_baselines() {
     let observer = observer_1931();
-    let spectra = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0]]).unwrap();
+    let spectra = Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0]]).unwrap();
 
     let xyz = spectra.spd_to_xyz(&observer, true).unwrap();
     assert_eq!(xyz.len(), 1);

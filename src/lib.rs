@@ -56,6 +56,4 @@ pub use spectral_mismatch::{
     spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
     spectral_mismatch_f1prime, spectral_mismatch_f1primes,
 };
-pub use spectrum::{
-    getwld, getwlr, Spectrum, SpectrumNormalization, WavelengthGrid,
-};
+pub use spectrum::{getwld, getwlr, Spectrum, SpectrumNormalization, WavelengthGrid};

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use lux_rs::{Observer, Spectrum, Spectrum, TristimulusObserver, WavelengthGrid};
+use lux_rs::{Observer, Spectrum, TristimulusObserver, WavelengthGrid};
 
 pub const WHITE_E: [f64; 3] = [0.5, 0.5, 0.5];
 pub const WHITE_D65: [f64; 3] = [95.047, 100.0, 108.883];

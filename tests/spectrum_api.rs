@@ -1,7 +1,7 @@
 mod common;
 
 use common::{observer_1931, spectrum_400_420, spectrum_555_556};
-use lux_rs::{getwld, getwlr, Spectrum, Spectrum, SpectrumNormalization, WavelengthGrid};
+use lux_rs::{getwld, getwlr, Spectrum, SpectrumNormalization, WavelengthGrid};
 
 #[test]
 fn grid_matches_luxpy_style_range() {
@@ -112,7 +112,7 @@ fn normalizes_spectrum_to_photometric_power() {
 #[test]
 fn one_row_matrix_normalization_preserves_numeric_baselines() {
     let observer = observer_1931();
-    let matrix = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0]]).unwrap();
+    let matrix = Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0]]).unwrap();
 
     let normalized = matrix
         .normalize_each(

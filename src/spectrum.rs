@@ -1,19 +1,13 @@
 use crate::color::TristimulusObserver;
 use crate::cri::{
-    spd_to_ciera, spd_to_ciera_result, spd_to_ciera_special, spd_to_cierf, spd_to_cierf_result,
-    spd_to_cierf_special, spd_to_cierg, spd_to_ies_tm30_result, spd_to_iesrf, spd_to_iesrf_result,
-    spd_to_iesrf_special, spd_to_iesrg, spd_to_tm30_result, spds_to_ciera, spds_to_ciera_result,
-    spds_to_ciera_special, spds_to_cierf, spds_to_cierf_result, spds_to_cierf_special,
-    spds_to_cierg, spds_to_ies_tm30_result, spds_to_iesrf, spds_to_iesrf_result,
-    spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result, CieRaResult, CieRfResult,
-    Tm30Result,
+    spds_to_ciera, spds_to_ciera_result, spds_to_ciera_special, spds_to_cierf,
+    spds_to_cierf_result, spds_to_cierf_special, spds_to_cierg, spds_to_ies_tm30_result,
+    spds_to_iesrf, spds_to_iesrf_result, spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result,
+    CieRaResult, CieRfResult, Tm30Result,
 };
 use crate::error::{LuxError, LuxResult};
 use crate::photometry::{spd_to_power, PowerType};
-use crate::spectral_mismatch::{
-    spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
-    spectral_mismatch_f1prime, spectral_mismatch_f1primes,
-};
+use crate::spectral_mismatch::{spectral_mismatch_correction_factors, spectral_mismatch_f1primes};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WavelengthGrid {
@@ -54,7 +48,8 @@ pub enum SpectrumNormalization {
     Quantal(f64),
 }
 
-trait IntoSpectrumRows {
+#[doc(hidden)]
+pub trait IntoSpectrumRows {
     fn into_rows(self) -> Vec<Vec<f64>>;
 }
 
@@ -95,10 +90,6 @@ impl SingleSpectrum {
             wavelengths,
             values,
         })
-    }
-
-    pub fn wavelengths(&self) -> &[f64] {
-        &self.wavelengths
     }
 
     pub fn values(&self) -> &[f64] {
@@ -221,101 +212,10 @@ impl SingleSpectrum {
 
         SingleSpectrum::new(
             self.wavelengths.clone(),
-            self.values.iter().map(|value| value * scale).collect::<Vec<_>>(),
-        )
-    }
-
-    pub fn spd_to_xyz(
-        &self,
-        observer: &TristimulusObserver,
-        relative: bool,
-    ) -> LuxResult<[f64; 3]> {
-        crate::photometry::spd_to_xyz(&self.as_batch()?, observer, relative)
-    }
-
-    pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<f64> {
-        crate::photometry::spd_to_ler(&self.as_batch()?, observer)
-    }
-
-    pub fn spd_to_power(
-        &self,
-        power_type: PowerType,
-        observer: Option<&TristimulusObserver>,
-    ) -> LuxResult<f64> {
-        spd_to_power(&self.as_batch()?, power_type, observer)
-    }
-
-    pub fn spd_to_ciera(&self) -> LuxResult<f64> {
-        spd_to_ciera(&self.as_batch()?)
-    }
-
-    pub fn spd_to_ciera_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_ciera_special(&self.as_batch()?)
-    }
-
-    pub fn spd_to_ciera_result(&self) -> LuxResult<CieRaResult> {
-        spd_to_ciera_result(&self.as_batch()?)
-    }
-
-    pub fn spd_to_cierf(&self) -> LuxResult<f64> {
-        spd_to_cierf(&self.as_batch()?)
-    }
-
-    pub fn spd_to_iesrf(&self) -> LuxResult<f64> {
-        spd_to_iesrf(&self.as_batch()?)
-    }
-
-    pub fn spd_to_cierg(&self) -> LuxResult<f64> {
-        spd_to_cierg(&self.as_batch()?)
-    }
-
-    pub fn spd_to_iesrg(&self) -> LuxResult<f64> {
-        spd_to_iesrg(&self.as_batch()?)
-    }
-
-    pub fn spd_to_cierf_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_cierf_special(&self.as_batch()?)
-    }
-
-    pub fn spd_to_iesrf_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_iesrf_special(&self.as_batch()?)
-    }
-
-    pub fn spd_to_cierf_result(&self) -> LuxResult<CieRfResult> {
-        spd_to_cierf_result(&self.as_batch()?)
-    }
-
-    pub fn spd_to_iesrf_result(&self) -> LuxResult<CieRfResult> {
-        spd_to_iesrf_result(&self.as_batch()?)
-    }
-
-    pub fn spd_to_tm30_result(&self) -> LuxResult<Tm30Result> {
-        spd_to_tm30_result(&self.as_batch()?)
-    }
-
-    pub fn spd_to_ies_tm30_result(&self) -> LuxResult<Tm30Result> {
-        spd_to_ies_tm30_result(&self.as_batch()?)
-    }
-
-    pub fn spectral_mismatch_f1prime(
-        &self,
-        calibration_illuminant: &Spectrum,
-        target_responsivity: &Spectrum,
-    ) -> LuxResult<f64> {
-        spectral_mismatch_f1prime(&self.as_batch()?, calibration_illuminant, target_responsivity)
-    }
-
-    pub fn spectral_mismatch_correction_factor(
-        &self,
-        detector: &Spectrum,
-        calibration_illuminant: &Spectrum,
-        target_responsivity: &Spectrum,
-    ) -> LuxResult<f64> {
-        spectral_mismatch_correction_factor(
-            &self.as_batch()?,
-            detector,
-            calibration_illuminant,
-            target_responsivity,
+            self.values
+                .iter()
+                .map(|value| value * scale)
+                .collect::<Vec<_>>(),
         )
     }
 }
@@ -352,10 +252,7 @@ impl Spectrum {
     }
 
     pub fn values(&self) -> &[f64] {
-        self.spectra
-            .first()
-            .map(Vec::as_slice)
-            .unwrap_or(&[])
+        self.spectra.first().map(Vec::as_slice).unwrap_or(&[])
     }
 
     pub fn spectra(&self) -> &[Vec<f64>] {

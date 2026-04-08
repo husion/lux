@@ -6,8 +6,7 @@ use std::process::Command;
 
 use lux_rs::{
     spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
-    spectral_mismatch_f1prime, spectral_mismatch_f1primes, standard_illuminant, Observer,
-    Spectrum,
+    spectral_mismatch_f1prime, spectral_mismatch_f1primes, standard_illuminant, Observer, Spectrum,
 };
 
 fn parse_vec(value: &str) -> Vec<f64> {

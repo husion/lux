@@ -4,7 +4,7 @@ use crate::cam::{
     CamUcsType, CamViewingConditions as ModelCamViewingConditions,
 };
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{Spectrum};
+use crate::spectrum::Spectrum;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -31,11 +31,6 @@ pub struct TristimulusObserver {
 pub struct MesopicLuminousEfficiency {
     pub curves: Spectrum,
     pub k_mesopic: Vec<f64>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct TristimulusValue {
-    values: [f64; 3],
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -310,276 +305,21 @@ fn observer_from_canonical_name(name: &'static str) -> Option<Observer> {
     }
 }
 
-trait IntoTristimulusRows {
-    fn into_rows(self) -> Vec<[f64; 3]>;
-}
-
-impl IntoTristimulusRows for [f64; 3] {
-    fn into_rows(self) -> Vec<[f64; 3]> {
-        vec![self]
-    }
-}
-
-impl IntoTristimulusRows for Vec<[f64; 3]> {
-    fn into_rows(self) -> Vec<[f64; 3]> {
-        self
-    }
-}
-
-impl TristimulusValue {
-    pub fn new(values: [f64; 3]) -> Self {
+impl Tristimulus {
+    pub fn new(values: Vec<[f64; 3]>) -> Self {
         Self { values }
     }
 
-    pub fn values(self) -> [f64; 3] {
-        self.values
-    }
-
-    pub fn xyz_to_yxy(self) -> Self {
-        Self::new(xyz_to_yxy(self.values))
-    }
-
-    pub fn yxy_to_xyz(self) -> Self {
-        Self::new(yxy_to_xyz(self.values))
-    }
-
-    pub fn xyz_to_yuv(self) -> Self {
-        Self::new(xyz_to_yuv(self.values))
-    }
-
-    pub fn yuv_to_xyz(self) -> Self {
-        Self::new(yuv_to_xyz(self.values))
-    }
-
-    pub fn xyz_to_lab(self, white_point: [f64; 3]) -> Self {
-        Self::new(xyz_to_lab(self.values, white_point))
-    }
-
-    pub fn lab_to_xyz(self, white_point: [f64; 3]) -> Self {
-        Self::new(lab_to_xyz(self.values, white_point))
-    }
-
-    pub fn xyz_to_luv(self, white_point: [f64; 3]) -> Self {
-        Self::new(xyz_to_luv(self.values, white_point))
-    }
-
-    pub fn luv_to_xyz(self, white_point: [f64; 3]) -> Self {
-        Self::new(luv_to_xyz(self.values, white_point))
-    }
-
-    pub fn xyz_to_lms(self, observer: Observer) -> LuxResult<Self> {
-        Ok(Self::new(xyz_to_lms(self.values, observer)?))
-    }
-
-    pub fn lms_to_xyz(self, observer: Observer) -> LuxResult<Self> {
-        Ok(Self::new(lms_to_xyz(self.values, observer)?))
-    }
-
-    pub fn xyz_to_srgb(self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
-        Self::new(xyz_to_srgb(self.values, gamma, offset, use_linear_part))
-    }
-
-    pub fn srgb_to_xyz(self, gamma: f64, offset: f64, use_linear_part: bool) -> Self {
-        Self::new(srgb_to_xyz(self.values, gamma, offset, use_linear_part))
-    }
-
-    pub fn cat_apply(
-        self,
-        source_white: [f64; 3],
-        target_white: [f64; 3],
-        transform: CatTransform,
-        degree_of_adaptation: f64,
-    ) -> LuxResult<Self> {
-        self.cat_apply_adapter(CatAdapter::from_degree(
-            source_white,
-            target_white,
-            transform,
-            degree_of_adaptation,
-        )?)
-    }
-
-    pub fn cat_apply_mode(
-        self,
-        source_white: [f64; 3],
-        target_white: [f64; 3],
-        baseline_white: Option<[f64; 3]>,
-        transform: CatTransform,
-        mode: CatMode,
-        degrees_of_adaptation: [f64; 2],
-    ) -> LuxResult<Self> {
-        self.cat_apply_adapter(CatAdapter::from_mode(
-            source_white,
-            target_white,
-            baseline_white,
-            transform,
-            mode,
-            degrees_of_adaptation,
-        )?)
-    }
-
-    pub fn cat_apply_with_conditions(
-        self,
-        source_white: [f64; 3],
-        target_white: [f64; 3],
-        transform: CatTransform,
-        surround: CatSurround,
-        adapting_luminance: f64,
-    ) -> LuxResult<Self> {
-        self.cat_apply_adapter(CatAdapter::from_degree(
-            source_white,
-            target_white,
-            transform,
-            cat_degree_of_adaptation(surround, adapting_luminance)?,
-        )?)
-    }
-
-    pub fn cat_apply_mode_with_conditions(
-        self,
-        source_white: [f64; 3],
-        target_white: [f64; 3],
-        baseline_white: Option<[f64; 3]>,
-        transform: CatTransform,
-        mode: CatMode,
-        source_conditions: CatViewingConditions,
-        target_conditions: CatViewingConditions,
-    ) -> LuxResult<Self> {
-        self.cat_apply_adapter(CatAdapter::from_conditions(
-            source_white,
-            target_white,
-            baseline_white,
-            transform,
-            mode,
-            source_conditions,
-            target_conditions,
-        )?)
-    }
-
-    pub fn cat_apply_context(self, context: CatContext) -> LuxResult<Self> {
-        self.cat_apply_adapter(CatAdapter::from_context(context)?)
-    }
-
-    pub fn cat_apply_adapter(self, adapter: CatAdapter) -> LuxResult<Self> {
-        Ok(Self::new(adapter.apply(self.values)?))
-    }
-
-    pub fn delta_e(self, other: Self, white_point: [f64; 3], formula: DeltaEFormula) -> f64 {
-        delta_e(self.values, other.values, white_point, formula)
-    }
-
-    pub fn cam_forward(self, conditions: ModelCamViewingConditions) -> LuxResult<CamAppearance> {
-        cam_forward(self.values, conditions)
-    }
-
-    pub fn cam16_forward(self, conditions: ModelCamViewingConditions) -> LuxResult<CamAppearance> {
-        cam16_forward(self.values, conditions)
-    }
-
-    pub fn ciecam02_forward(
-        self,
-        conditions: ModelCamViewingConditions,
-    ) -> LuxResult<CamAppearance> {
-        ciecam02_forward(self.values, conditions)
-    }
-
-    pub fn cam_ucs_forward(
-        self,
-        conditions: ModelCamViewingConditions,
-        ucs_type: CamUcsType,
-    ) -> LuxResult<CamUcsAppearance> {
-        cam_ucs_forward(self.values, conditions, ucs_type)
-    }
-
-    pub fn cam16_ucs_forward(
-        self,
-        conditions: ModelCamViewingConditions,
-        ucs_type: CamUcsType,
-    ) -> LuxResult<CamUcsAppearance> {
-        cam16_ucs_forward(self.values, conditions, ucs_type)
-    }
-
-    pub fn ciecam02_ucs_forward(
-        self,
-        conditions: ModelCamViewingConditions,
-        ucs_type: CamUcsType,
-    ) -> LuxResult<CamUcsAppearance> {
-        ciecam02_ucs_forward(self.values, conditions, ucs_type)
-    }
-
-    pub fn cam_inverse(self, conditions: ModelCamViewingConditions) -> LuxResult<Self> {
-        Ok(Self::new(cam_inverse(
-            CamAppearance {
-                lightness: self.values[0],
-                brightness: 0.0,
-                chroma: 0.0,
-                colorfulness: (self.values[1] * self.values[1] + self.values[2] * self.values[2])
-                    .sqrt(),
-                saturation: 0.0,
-                hue_angle: 0.0,
-                a_m: self.values[1],
-                b_m: self.values[2],
-                a_c: 0.0,
-                b_c: 0.0,
-            },
-            conditions,
-        )?))
-    }
-
-    pub fn cam16_ucs_inverse(
-        self,
-        conditions: ModelCamViewingConditions,
-        ucs_type: CamUcsType,
-    ) -> LuxResult<Self> {
-        Ok(Self::new(cam16_ucs_inverse(
-            CamUcsAppearance {
-                j_prime: self.values[0],
-                a_prime: self.values[1],
-                b_prime: self.values[2],
-            },
-            conditions,
-            ucs_type,
-        )?))
-    }
-
-    pub fn ciecam02_ucs_inverse(
-        self,
-        conditions: ModelCamViewingConditions,
-        ucs_type: CamUcsType,
-    ) -> LuxResult<Self> {
-        Ok(Self::new(ciecam02_ucs_inverse(
-            CamUcsAppearance {
-                j_prime: self.values[0],
-                a_prime: self.values[1],
-                b_prime: self.values[2],
-            },
-            conditions,
-            ucs_type,
-        )?))
-    }
-}
-
-impl From<[f64; 3]> for TristimulusSample {
-    fn from(values: [f64; 3]) -> Self {
-        Self::new(values)
-    }
-}
-
-impl Tristimulus {
-    pub fn new<T: IntoTristimulusRows>(values: T) -> Self {
-        Self {
-            values: values.into_rows(),
-        }
-    }
-
-    pub fn from_single(value: TristimulusValue) -> Self {
-        Self::new(value.values())
+    pub fn from_single(value: [f64; 3]) -> Self {
+        Self::new(vec![value])
     }
 
     pub fn values(&self) -> &[[f64; 3]] {
         &self.values
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = TristimulusValue> + '_ {
-        self.values.iter().copied().map(TristimulusValue::new)
+    pub fn iter(&self) -> impl Iterator<Item = [f64; 3]> + '_ {
+        self.values.iter().copied()
     }
 
     pub fn len(&self) -> usize {
@@ -595,19 +335,43 @@ impl Tristimulus {
     }
 
     pub fn xyz_to_yxy(&self) -> Self {
-        Self::new(self.values.iter().copied().map(xyz_to_yxy).collect::<Vec<_>>())
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(xyz_to_yxy)
+                .collect::<Vec<_>>(),
+        )
     }
 
     pub fn yxy_to_xyz(&self) -> Self {
-        Self::new(self.values.iter().copied().map(yxy_to_xyz).collect::<Vec<_>>())
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(yxy_to_xyz)
+                .collect::<Vec<_>>(),
+        )
     }
 
     pub fn xyz_to_yuv(&self) -> Self {
-        Self::new(self.values.iter().copied().map(xyz_to_yuv).collect::<Vec<_>>())
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(xyz_to_yuv)
+                .collect::<Vec<_>>(),
+        )
     }
 
     pub fn yuv_to_xyz(&self) -> Self {
-        Self::new(self.values.iter().copied().map(yuv_to_xyz).collect::<Vec<_>>())
+        Self::new(
+            self.values
+                .iter()
+                .copied()
+                .map(yuv_to_xyz)
+                .collect::<Vec<_>>(),
+        )
     }
 
     pub fn xyz_to_lab(&self, white_point: [f64; 3]) -> Self {
@@ -805,7 +569,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam_forward(value, conditions))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn cam16_forward(
@@ -816,7 +580,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam16_forward(value, conditions))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn ciecam02_forward(
@@ -827,7 +591,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| ciecam02_forward(value, conditions))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn cam_ucs_forward(
@@ -839,7 +603,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam_ucs_forward(value, conditions, ucs_type))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn cam16_ucs_forward(
@@ -851,7 +615,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam16_ucs_forward(value, conditions, ucs_type))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn ciecam02_ucs_forward(
@@ -863,7 +627,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| ciecam02_ucs_forward(value, conditions, ucs_type))
-            .collect::<Vec<_>>()
+            .collect::<LuxResult<Vec<_>>>()
     }
 
     pub fn cam_inverse(&self, conditions: ModelCamViewingConditions) -> LuxResult<Self> {
@@ -947,15 +711,9 @@ impl From<Vec<[f64; 3]>> for Tristimulus {
     }
 }
 
-impl From<TristimulusValue> for Tristimulus {
-    fn from(value: TristimulusValue) -> Self {
+impl From<[f64; 3]> for Tristimulus {
+    fn from(value: [f64; 3]) -> Self {
         Self::from_single(value)
-    }
-}
-
-impl FromIterator<TristimulusValue> for Tristimulus {
-    fn from_iter<T: IntoIterator<Item = TristimulusValue>>(iter: T) -> Self {
-        Self::new(iter.into_iter().map(TristimulusValue::values).collect::<Vec<_>>())
     }
 }
 
@@ -2040,7 +1798,7 @@ mod tests {
         cat_compile_mode_with_conditions, cat_compile_with_conditions, cat_degree_of_adaptation,
         cat_mode_degrees_from_conditions, delta_e_cie76, delta_e_cie76_lab, delta_e_ciede2000,
         delta_e_ciede2000_lab, lab_to_xyz, CatAdapter, CatContext, CatMode, CatSurround,
-        CatTransform, CatViewingConditions, Tristimulus, Tristimulus,
+        CatTransform, CatViewingConditions, Tristimulus,
     };
 
     #[test]

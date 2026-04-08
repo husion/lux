@@ -7,7 +7,7 @@ use lux_rs::{
     cam16_viewing_conditions, ciecam02_viewing_conditions, delta_e, delta_e_cie76,
     delta_e_ciede2000, get_cie_mesopic_adaptation, lab_to_xyz, lms_to_xyz, luv_to_xyz, srgb_to_xyz,
     vlbar_cie_mesopic, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv, xyz_to_yxy,
-    yuv_to_xyz, yxy_to_xyz, CamUcsType, DeltaEFormula, Observer, Tristimulus, Tristimulus,
+    yuv_to_xyz, yxy_to_xyz, CamUcsType, DeltaEFormula, Observer, Tristimulus,
 };
 
 #[test]
@@ -305,9 +305,7 @@ fn batch_color_space_transforms_match_scalar_versions() {
         vec![xyz_to_lab(xyz[0], WHITE_E), xyz_to_lab(xyz[1], WHITE_E)]
     );
     assert_eq!(
-        Tristimulus::new(lab.clone())
-            .lab_to_xyz(WHITE_E)
-            .into_vec(),
+        Tristimulus::new(lab.clone()).lab_to_xyz(WHITE_E).into_vec(),
         vec![lab_to_xyz(lab[0], WHITE_E), lab_to_xyz(lab[1], WHITE_E)]
     );
     let luv = xyz_set.xyz_to_luv(WHITE_E).into_vec();
@@ -316,9 +314,7 @@ fn batch_color_space_transforms_match_scalar_versions() {
         vec![xyz_to_luv(xyz[0], WHITE_E), xyz_to_luv(xyz[1], WHITE_E)]
     );
     assert_eq!(
-        Tristimulus::new(luv.clone())
-            .luv_to_xyz(WHITE_E)
-            .into_vec(),
+        Tristimulus::new(luv.clone()).luv_to_xyz(WHITE_E).into_vec(),
         vec![luv_to_xyz(luv[0], WHITE_E), luv_to_xyz(luv[1], WHITE_E)]
     );
 }
@@ -461,7 +457,7 @@ fn tristimulus_set_wrapper_matches_batch_transforms() {
         cam_ucs_many
             .iter()
             .map(|value| [value.j_prime, value.a_prime, value.b_prime])
-            .collect(),
+            .collect::<Vec<_>>(),
     );
     let xyz_back = ucs_triplets
         .ciecam02_ucs_inverse(ciecam02_conditions, CamUcsType::Ucs)
@@ -473,7 +469,7 @@ fn tristimulus_set_wrapper_matches_batch_transforms() {
 
 #[test]
 fn one_row_batch_color_transforms_preserve_numeric_baselines() {
-    let xyz = TristimulusSet::new(vec![XYZ_SAMPLE]);
+    let xyz = Tristimulus::new(vec![XYZ_SAMPLE]);
 
     let yxy = xyz.xyz_to_yxy().into_vec();
     assert_eq!(yxy.len(), 1);
@@ -496,8 +492,8 @@ fn one_row_batch_color_transforms_preserve_numeric_baselines() {
 
 #[test]
 fn one_row_batch_delta_e_preserves_numeric_baseline() {
-    let left = TristimulusSet::new(vec![lab_to_xyz([50.0, 2.6772, -79.7751], WHITE_D65)]);
-    let right = TristimulusSet::new(vec![lab_to_xyz([50.0, 0.0, -82.7485], WHITE_D65)]);
+    let left = Tristimulus::new(vec![lab_to_xyz([50.0, 2.6772, -79.7751], WHITE_D65)]);
+    let right = Tristimulus::new(vec![lab_to_xyz([50.0, 0.0, -82.7485], WHITE_D65)]);
 
     let result = left
         .delta_e(&right, WHITE_D65, DeltaEFormula::Ciede2000)
