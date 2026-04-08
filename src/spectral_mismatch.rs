@@ -1,5 +1,5 @@
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{getwld, Spectrum, Spectrum};
+use crate::spectrum::{getwld, Spectrum};
 
 struct SpectralMismatchContext {
     spacing: Vec<f64>,

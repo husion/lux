@@ -1,7 +1,7 @@
 use crate::color::Observer;
 use crate::error::{LuxError, LuxResult};
 use crate::photometry::spd_to_xyz;
-use crate::spectrum::{getwlr, Spectrum, Spectrum, WavelengthGrid};
+use crate::spectrum::{getwlr, Spectrum, WavelengthGrid};
 
 const DEFAULT_WAVELENGTH_GRID: WavelengthGrid = WavelengthGrid {
     start: 360.0,

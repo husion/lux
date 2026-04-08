@@ -5,7 +5,7 @@ use crate::color::{
 use crate::error::{LuxError, LuxResult};
 use crate::illuminants::{blackbody, cri_ref, daylightphase, xyz_to_cct};
 use crate::photometry::integrate_xyz;
-use crate::spectrum::{getwlr, Spectrum, Spectrum, WavelengthGrid};
+use crate::spectrum::{getwlr, Spectrum, WavelengthGrid};
 
 const CIE_RA_SAMPLE_CSV: &str = include_str!("../data/rfls/CIE_13_3_1995_R14.dat");
 const CIE_RF_SAMPLE_CSV: &str = include_str!("../data/rfls/CIE224_2017_R99_1nm.dat");
@@ -661,7 +661,7 @@ mod tests {
         spds_to_iesrf_result, spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result,
     };
     use crate::illuminants::standard_illuminant;
-    use crate::spectrum::{Spectrum, Spectrum};
+    use crate::spectrum::{Spectrum};
 
     #[test]
     fn ciera_d65_is_near_perfect() {

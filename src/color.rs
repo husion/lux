@@ -4,7 +4,7 @@ use crate::cam::{
     CamUcsType, CamViewingConditions as ModelCamViewingConditions,
 };
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{Spectrum, Spectrum};
+use crate::spectrum::{Spectrum};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
