@@ -81,19 +81,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-For color calculations, use `Tristimulus` and `Tristimulus` as the primary API.
-For spectral calculations, use `Spectrum` and `Spectrum` as the primary API.
+For color calculations, use `Tristimulus` as the primary batch API (`1` row represents a single XYZ-like sample).
+For spectral calculations, use `Spectrum` and `SpectralMatrix` as the primary API.
 
 ## API Shape Conventions
 
 Phase 1 convergence keeps the current numerical behavior, but makes the intended public API shape explicit:
 
-- use `Spectrum` for one spectral power distribution and `Spectrum` for aligned batch spectral workflows
-- use `Tristimulus` for one XYZ-like color value and `Tristimulus` for aligned batch color workflows
+- use `Spectrum` for one spectral power distribution and `SpectralMatrix` for aligned batch spectral workflows
+- use `Tristimulus` for aligned batch XYZ-like color workflows; represent a single item as a one-row batch
 - prefer single-item public entry points first; add batch variants only when the same operation needs to run over aligned multi-row data
-- when both forms exist, keep singular/plural naming aligned, for example `spd_to_*` for `Spectrum` and `spds_to_*` for `Spectrum`
-- source constructors that produce one SPD should return `Spectrum`; constructors that naturally produce multiple SPDs should return `Spectrum`
-- fixed-size leaf kernels may still use raw `[f64; 3]` values internally, but public wrappers should prefer `Tristimulus` / `Tristimulus` when they represent semantic color results
+- when both forms exist, keep singular/plural naming aligned, for example `spd_to_*` for `Spectrum` and `spds_to_*` for `SpectralMatrix`
+- source constructors that produce one SPD should return `Spectrum`; constructors that naturally produce multiple SPDs should return `SpectralMatrix`
+- fixed-size leaf kernels may still use raw `[f64; 3]` values internally, but public wrappers should prefer `Tristimulus` when they represent semantic color results
 - wrapper APIs should stay thin: the single-item and batch forms should share one core implementation rather than fork behavior
 
 ## Roadmap
