@@ -3,7 +3,9 @@ pub mod color;
 pub mod cri;
 pub mod error;
 pub mod illuminants;
+pub mod indvcmf;
 pub mod photometry;
+pub mod spectral_mismatch;
 pub mod spectrum;
 
 #[allow(deprecated)]
@@ -44,7 +46,16 @@ pub use illuminants::{
     blackbody, cct_to_xyz, cri_ref, daylightlocus, daylightphase, standard_illuminant,
     standard_illuminant_names, xyz_to_cct,
 };
+pub use indvcmf::{
+    individual_observer_cmf, individual_observer_default_std_devs, individual_observer_lms_to_xyz,
+    individual_observer_lms_to_xyz_matrix, IndividualObserverCmf, IndividualObserverParameters,
+    IndividualObserverStdDevs,
+};
 pub use photometry::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType};
+pub use spectral_mismatch::{
+    spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
+    spectral_mismatch_f1prime, spectral_mismatch_f1primes,
+};
 pub use spectrum::{
     getwld, getwlr, SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid,
 };

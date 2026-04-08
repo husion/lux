@@ -491,6 +491,17 @@ P0 验收完成标志：
 - [ ] `iolidfiles`
 - [ ] `spectral_mismatch_and_uncertainty`
 
+说明：
+
+- 当前已补上 `spectral_mismatch_and_uncertainty` 的首批 detector spectral mismatch 主路径：
+  - `f1′`
+  - spectral mismatch correction factor
+- 当前已补上 `indvcmf` 的首批确定性单观察者主路径：
+  - Asano-style deterministic individual observer LMS CMF
+  - LMS -> XYZ matrix interpolation
+  - 基于零 peak-shift 假设的 XYZ CMF 输出
+- 当前尚未实现的是 `indvcmf` 的 peak-shift 路径、Monte Carlo / categorical observer 工作流、更完整的 measurement uncertainty 工作流，以及 `hypspcim` / 外围工具链等其余 P4 子域。
+
 ## 6. Python 对拍验收要求
 
 以后每个功能都必须按“双轨验收”执行：

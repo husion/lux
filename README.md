@@ -14,6 +14,8 @@ The crate currently includes:
 - `P2` status: color transforms, `deltaE`, and CAT utilities completed
 - `P3` status: first CAM / CAM-UCS forward and inverse paths completed
 - `P3` status: first CRI path completed for `CIE Ra`, `CIE Rf / Rg`, and `TM-30` result objects
+- `P4` status: first detector spectral mismatch utilities completed for `f1′` and correction factors
+- `P4` status: first `indvcmf` slice completed for deterministic Asano-style individual observer CMFs without peak-shift support
 - next priority: move into photobiological metrics
 
 ## Design Goals
@@ -24,6 +26,8 @@ The crate currently includes:
 - color kernels: CCT, common XYZ-derived transforms, color difference, and chromatic adaptation including viewing-condition and compiled-adapter workflows
 - appearance models: first-pass `CIECAM02`, `CAM16`, `CAM02-UCS`, and `CAM16-UCS` forward / inverse paths plus wrapper APIs on top of the color data models
 - color quality metrics: `CIE Ra`, `CIE Rf / Rg`, and structured `TM-30` result objects for single and batch spectral workflows
+- advanced detector utilities: first-pass spectral mismatch (`f1′`) and correction-factor workflows on top of `Spectrum` / `SpectralMatrix`
+- advanced observer utilities: first-pass `indvcmf` deterministic LMS / XYZ CMF generation for one observer profile
 
 ## Why This Repo Exists
 

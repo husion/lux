@@ -10,6 +10,10 @@ use crate::cri::{
 };
 use crate::error::{LuxError, LuxResult};
 use crate::photometry::{spd_to_power, PowerType};
+use crate::spectral_mismatch::{
+    spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
+    spectral_mismatch_f1prime, spectral_mismatch_f1primes,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WavelengthGrid {
@@ -272,6 +276,28 @@ impl Spectrum {
     pub fn spd_to_ies_tm30_result(&self) -> LuxResult<Tm30Result> {
         spd_to_ies_tm30_result(self)
     }
+
+    pub fn spectral_mismatch_f1prime(
+        &self,
+        calibration_illuminant: &Spectrum,
+        target_responsivity: &Spectrum,
+    ) -> LuxResult<f64> {
+        spectral_mismatch_f1prime(self, calibration_illuminant, target_responsivity)
+    }
+
+    pub fn spectral_mismatch_correction_factor(
+        &self,
+        detector: &Spectrum,
+        calibration_illuminant: &Spectrum,
+        target_responsivity: &Spectrum,
+    ) -> LuxResult<f64> {
+        spectral_mismatch_correction_factor(
+            self,
+            detector,
+            calibration_illuminant,
+            target_responsivity,
+        )
+    }
 }
 
 impl SpectralMatrix {
@@ -441,6 +467,28 @@ impl SpectralMatrix {
 
     pub fn spd_to_ies_tm30_result(&self) -> LuxResult<Vec<Tm30Result>> {
         spds_to_ies_tm30_result(self)
+    }
+
+    pub fn spectral_mismatch_f1primes(
+        &self,
+        calibration_illuminant: &Spectrum,
+        target_responsivity: &Spectrum,
+    ) -> LuxResult<Vec<f64>> {
+        spectral_mismatch_f1primes(self, calibration_illuminant, target_responsivity)
+    }
+
+    pub fn spectral_mismatch_correction_factors(
+        &self,
+        detectors: &SpectralMatrix,
+        calibration_illuminant: &Spectrum,
+        target_responsivity: &Spectrum,
+    ) -> LuxResult<Vec<Vec<f64>>> {
+        spectral_mismatch_correction_factors(
+            self,
+            detectors,
+            calibration_illuminant,
+            target_responsivity,
+        )
     }
 }
 
