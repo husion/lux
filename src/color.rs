@@ -34,12 +34,12 @@ pub struct MesopicLuminousEfficiency {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Tristimulus {
+pub(crate) struct TristimulusSample {
     values: [f64; 3],
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TristimulusSet {
+pub struct Tristimulus {
     values: Vec<[f64; 3]>,
 }
 
@@ -310,7 +310,7 @@ fn observer_from_canonical_name(name: &'static str) -> Option<Observer> {
     }
 }
 
-impl Tristimulus {
+impl TristimulusSample {
     pub fn new(values: [f64; 3]) -> Self {
         Self { values }
     }
@@ -541,24 +541,24 @@ impl Tristimulus {
     }
 }
 
-impl From<[f64; 3]> for Tristimulus {
+impl From<[f64; 3]> for TristimulusSample {
     fn from(values: [f64; 3]) -> Self {
         Self::new(values)
     }
 }
 
-impl From<Tristimulus> for [f64; 3] {
-    fn from(value: Tristimulus) -> Self {
+impl From<TristimulusSample> for [f64; 3] {
+    fn from(value: TristimulusSample) -> Self {
         value.values
     }
 }
 
-impl TristimulusSet {
+impl Tristimulus {
     pub fn new(values: Vec<[f64; 3]>) -> Self {
         Self { values }
     }
 
-    pub fn from_single(value: Tristimulus) -> Self {
+    pub(crate) fn from_single(value: TristimulusSample) -> Self {
         Self::new(vec![value.values()])
     }
 
@@ -566,8 +566,8 @@ impl TristimulusSet {
         &self.values
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Tristimulus> + '_ {
-        self.values.iter().copied().map(Tristimulus::new)
+    pub fn iter(&self) -> impl Iterator<Item = [f64; 3]> + '_ {
+        self.values.iter().copied()
     }
 
     pub fn len(&self) -> usize {
@@ -929,21 +929,21 @@ impl TristimulusSet {
     }
 }
 
-impl From<Vec<[f64; 3]>> for TristimulusSet {
+impl From<Vec<[f64; 3]>> for Tristimulus {
     fn from(values: Vec<[f64; 3]>) -> Self {
         Self::new(values)
     }
 }
 
-impl From<Tristimulus> for TristimulusSet {
-    fn from(value: Tristimulus) -> Self {
-        Self::from_single(value)
+impl From<[f64; 3]> for Tristimulus {
+    fn from(value: [f64; 3]) -> Self {
+        Self::new(vec![value])
     }
 }
 
-impl FromIterator<Tristimulus> for TristimulusSet {
-    fn from_iter<T: IntoIterator<Item = Tristimulus>>(iter: T) -> Self {
-        Self::new(iter.into_iter().map(Tristimulus::values).collect())
+impl FromIterator<[f64; 3]> for Tristimulus {
+    fn from_iter<T: IntoIterator<Item = [f64; 3]>>(iter: T) -> Self {
+        Self::new(iter.into_iter().collect())
     }
 }
 
