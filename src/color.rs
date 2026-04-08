@@ -34,7 +34,7 @@ pub struct MesopicLuminousEfficiency {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct TristimulusSample {
+pub(crate) struct TristimulusValue {
     values: [f64; 3],
 }
 
@@ -310,7 +310,23 @@ fn observer_from_canonical_name(name: &'static str) -> Option<Observer> {
     }
 }
 
-impl TristimulusSample {
+trait IntoTristimulusRows {
+    fn into_rows(self) -> Vec<[f64; 3]>;
+}
+
+impl IntoTristimulusRows for [f64; 3] {
+    fn into_rows(self) -> Vec<[f64; 3]> {
+        vec![self]
+    }
+}
+
+impl IntoTristimulusRows for Vec<[f64; 3]> {
+    fn into_rows(self) -> Vec<[f64; 3]> {
+        self
+    }
+}
+
+impl TristimulusValue {
     pub fn new(values: [f64; 3]) -> Self {
         Self { values }
     }
@@ -554,7 +570,11 @@ impl From<TristimulusSample> for [f64; 3] {
 }
 
 impl Tristimulus {
-    pub fn new(values: Vec<[f64; 3]>) -> Self {
+    pub fn new<T: IntoTristimulusRows>(values: T) -> Self {
+        Self {
+            values: values.into_rows(),
+        }
+    }
         Self { values }
     }
 
@@ -935,15 +955,15 @@ impl From<Vec<[f64; 3]>> for Tristimulus {
     }
 }
 
-impl From<[f64; 3]> for Tristimulus {
-    fn from(value: [f64; 3]) -> Self {
-        Self::new(vec![value])
+impl From<TristimulusValue> for Tristimulus {
+    fn from(value: Tristimulus) -> Self {
+        Self::from_single(value)
     }
 }
 
-impl FromIterator<[f64; 3]> for Tristimulus {
-    fn from_iter<T: IntoIterator<Item = [f64; 3]>>(iter: T) -> Self {
-        Self::new(iter.into_iter().collect())
+impl FromIterator<TristimulusValue> for Tristimulus {
+    fn from_iter<T: IntoIterator<Item = Tristimulus>>(iter: T) -> Self {
+        Self::new(iter.into_iter().map(Tristimulus::values).collect())
     }
 }
 
