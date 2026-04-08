@@ -7,7 +7,7 @@ use std::process::Command;
 use lux_rs::{
     spectral_mismatch_correction_factor, spectral_mismatch_correction_factors,
     spectral_mismatch_f1prime, spectral_mismatch_f1primes, standard_illuminant, Observer,
-    SpectralMatrix,
+    Spectrum,
 };
 
 fn parse_vec(value: &str) -> Vec<f64> {
@@ -107,7 +107,7 @@ fn matches_luxpy_detector_spectral_mismatch_baselines() {
     let calibration = standard_illuminant("A", None).unwrap();
     let d65 = standard_illuminant("D65", None).unwrap();
     let a = standard_illuminant("A", None).unwrap();
-    let measured_sources = SpectralMatrix::new(
+    let measured_sources = Spectrum::new(
         d65.wavelengths().to_vec(),
         vec![d65.values().to_vec(), a.values().to_vec()],
     )

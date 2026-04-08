@@ -1,7 +1,7 @@
 mod common;
 
 use common::{observer_1931, spectrum_400_420, spectrum_555_556};
-use lux_rs::{getwld, getwlr, SpectralMatrix, Spectrum, SpectrumNormalization, WavelengthGrid};
+use lux_rs::{getwld, getwlr, Spectrum, Spectrum, SpectrumNormalization, WavelengthGrid};
 
 #[test]
 fn grid_matches_luxpy_style_range() {
@@ -32,7 +32,7 @@ fn linearly_interpolates_and_extrapolates() {
 
 #[test]
 fn constructs_spectral_matrix() {
-    let matrix = SpectralMatrix::new(
+    let matrix = Spectrum::new(
         vec![400.0, 410.0, 420.0],
         vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]],
     )
@@ -43,7 +43,7 @@ fn constructs_spectral_matrix() {
 
 #[test]
 fn rejects_spectral_matrix_with_bad_row_length() {
-    let result = SpectralMatrix::new(
+    let result = Spectrum::new(
         vec![400.0, 410.0, 420.0],
         vec![vec![1.0, 2.0], vec![4.0, 5.0, 6.0]],
     );
@@ -52,7 +52,7 @@ fn rejects_spectral_matrix_with_bad_row_length() {
 
 #[test]
 fn interpolates_spectral_matrix_linearly() {
-    let matrix = SpectralMatrix::new(
+    let matrix = Spectrum::new(
         vec![400.0, 410.0, 420.0],
         vec![vec![1.0, 2.0, 3.0], vec![2.0, 3.0, 4.0]],
     )
@@ -128,7 +128,7 @@ fn one_row_matrix_normalization_preserves_numeric_baselines() {
 
 #[test]
 fn normalizes_each_spectrum_in_matrix() {
-    let matrix = SpectralMatrix::new(
+    let matrix = Spectrum::new(
         vec![400.0, 410.0, 420.0],
         vec![vec![1.0, 2.0, 3.0], vec![2.0, 4.0, 6.0]],
     )

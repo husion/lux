@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use lux_rs::{Observer, SpectralMatrix, Spectrum, TristimulusObserver, WavelengthGrid};
+use lux_rs::{Observer, Spectrum, Spectrum, TristimulusObserver, WavelengthGrid};
 
 pub const WHITE_E: [f64; 3] = [0.5, 0.5, 0.5];
 pub const WHITE_D65: [f64; 3] = [95.047, 100.0, 108.883];
@@ -28,6 +28,6 @@ pub fn spectrum_555_556() -> Spectrum {
     Spectrum::new(vec![555.0, 556.0], vec![1.0, 1.0]).unwrap()
 }
 
-pub fn matrix_555_556() -> SpectralMatrix {
-    SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap()
+pub fn matrix_555_556() -> Spectrum {
+    Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap()
 }

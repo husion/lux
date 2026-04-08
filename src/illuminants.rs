@@ -1,7 +1,7 @@
 use crate::color::Observer;
 use crate::error::{LuxError, LuxResult};
 use crate::photometry::spd_to_xyz;
-use crate::spectrum::{getwlr, SpectralMatrix, Spectrum, WavelengthGrid};
+use crate::spectrum::{getwlr, Spectrum, Spectrum, WavelengthGrid};
 
 const DEFAULT_WAVELENGTH_GRID: WavelengthGrid = WavelengthGrid {
     start: 360.0,
@@ -394,7 +394,7 @@ pub fn daylightphase(
     Spectrum::new(wavelengths, values)
 }
 
-pub fn cri_ref(ccts: &[f64], wavelength_grid: Option<WavelengthGrid>) -> LuxResult<SpectralMatrix> {
+pub fn cri_ref(ccts: &[f64], wavelength_grid: Option<WavelengthGrid>) -> LuxResult<Spectrum> {
     if ccts.is_empty() {
         return Err(LuxError::EmptyInput);
     }
@@ -412,7 +412,7 @@ pub fn cri_ref(ccts: &[f64], wavelength_grid: Option<WavelengthGrid>) -> LuxResu
         spectra.push(spectrum.values().to_vec());
     }
 
-    SpectralMatrix::new(wavelengths, spectra)
+    Spectrum::new(wavelengths, spectra)
 }
 
 pub fn standard_illuminant(

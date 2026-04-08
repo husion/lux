@@ -4,7 +4,7 @@ use crate::cam::{
     CamUcsType, CamViewingConditions as ModelCamViewingConditions,
 };
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{SpectralMatrix, Spectrum};
+use crate::spectrum::{Spectrum, Spectrum};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -29,7 +29,7 @@ pub struct TristimulusObserver {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MesopicLuminousEfficiency {
-    pub curves: SpectralMatrix,
+    pub curves: Spectrum,
     pub k_mesopic: Vec<f64>,
 }
 
@@ -234,11 +234,11 @@ impl Observer {
         TristimulusObserver::from_csv(spec.data, spec.k)
     }
 
-    pub fn xyzbar(self) -> LuxResult<SpectralMatrix> {
+    pub fn xyzbar(self) -> LuxResult<Spectrum> {
         self.standard()?.xyz_spectra()
     }
 
-    pub fn xyzbar_linear(self, target_wavelengths: &[f64]) -> LuxResult<SpectralMatrix> {
+    pub fn xyzbar_linear(self, target_wavelengths: &[f64]) -> LuxResult<Spectrum> {
         self.xyzbar()?.cie_interp_linear(target_wavelengths, false)
     }
 
@@ -1293,8 +1293,8 @@ impl TristimulusObserver {
         Spectrum::new(self.wavelengths.clone(), self.y_bar.clone())
     }
 
-    pub fn xyz_spectra(&self) -> LuxResult<SpectralMatrix> {
-        SpectralMatrix::new(
+    pub fn xyz_spectra(&self) -> LuxResult<Spectrum> {
+        Spectrum::new(
             self.wavelengths.clone(),
             vec![self.x_bar.clone(), self.y_bar.clone(), self.z_bar.clone()],
         )
@@ -1991,7 +1991,7 @@ pub fn vlbar_cie_mesopic(
         k_mesopic.push(k);
     }
 
-    let curves = SpectralMatrix::new(wavelengths, curves)?;
+    let curves = Spectrum::new(wavelengths, curves)?;
     let curves = if let Some(target_wavelengths) = target_wavelengths {
         curves.cie_interp_linear(target_wavelengths, false)?
     } else {
@@ -2040,7 +2040,7 @@ mod tests {
         cat_compile_mode_with_conditions, cat_compile_with_conditions, cat_degree_of_adaptation,
         cat_mode_degrees_from_conditions, delta_e_cie76, delta_e_cie76_lab, delta_e_ciede2000,
         delta_e_ciede2000_lab, lab_to_xyz, CatAdapter, CatContext, CatMode, CatSurround,
-        CatTransform, CatViewingConditions, Tristimulus, TristimulusSample,
+        CatTransform, CatViewingConditions, Tristimulus, Tristimulus,
     };
 
     #[test]

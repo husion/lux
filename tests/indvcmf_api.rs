@@ -29,7 +29,7 @@ fn assert_vec_close(actual: &[f64], expected: &[f64], tolerance: f64) {
     }
 }
 
-fn flatten_sample_columns(matrix: &lux_rs::SpectralMatrix, idxs: &[usize]) -> Vec<f64> {
+fn flatten_sample_columns(matrix: &lux_rs::Spectrum, idxs: &[usize]) -> Vec<f64> {
     let mut sampled = Vec::new();
     for &idx in idxs {
         sampled.push(matrix.wavelengths()[idx]);

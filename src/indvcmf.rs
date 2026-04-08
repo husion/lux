@@ -1,6 +1,6 @@
 use crate::color::Matrix3;
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{SpectralMatrix, Spectrum};
+use crate::spectrum::{Spectrum, Spectrum};
 
 const ASANO_LMS_ABSORBANCE: &str = include_str!("../data/indvcmf/asano_cie2006_Alms.dat");
 const ASANO_RELATIVE_MACULAR_DENSITY: &str =
@@ -58,11 +58,11 @@ pub struct IndividualObserverStdDevs {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndividualObserverCmf {
-    pub lms: SpectralMatrix,
-    pub xyz: SpectralMatrix,
+    pub lms: Spectrum,
+    pub xyz: Spectrum,
     pub lens_transmission: Spectrum,
     pub macular_transmission: Spectrum,
-    pub photopigment_sensitivity: SpectralMatrix,
+    pub photopigment_sensitivity: Spectrum,
     pub lms_to_xyz_matrix: Matrix3,
 }
 
@@ -82,10 +82,10 @@ pub fn individual_observer_lms_to_xyz_matrix(field_size: f64) -> Matrix3 {
 }
 
 pub fn individual_observer_lms_to_xyz(
-    lms: &SpectralMatrix,
+    lms: &Spectrum,
     field_size: f64,
     allow_negative_values: bool,
-) -> LuxResult<SpectralMatrix> {
+) -> LuxResult<Spectrum> {
     if lms.spectrum_count() != 3 {
         return Err(LuxError::InvalidInput(
             "individual observer LMS input must contain exactly 3 spectra",
@@ -115,7 +115,7 @@ pub fn individual_observer_lms_to_xyz(
         }
     }
 
-    SpectralMatrix::new(wavelengths, xyz)
+    Spectrum::new(wavelengths, xyz)
 }
 
 pub fn individual_observer_cmf(
@@ -202,7 +202,7 @@ pub fn individual_observer_cmf(
         }
     }
 
-    let lms_matrix = SpectralMatrix::new(wavelengths.clone(), lms)?;
+    let lms_matrix = Spectrum::new(wavelengths.clone(), lms)?;
     let xyz_matrix = individual_observer_lms_to_xyz(
         &lms_matrix,
         parameters.field_size,
@@ -222,7 +222,7 @@ pub fn individual_observer_cmf(
             .map(|value| 10f64.powf(-value))
             .collect(),
     )?;
-    let photopigment_sensitivity = SpectralMatrix::new(wavelengths, photopigment_sensitivity)?;
+    let photopigment_sensitivity = Spectrum::new(wavelengths, photopigment_sensitivity)?;
 
     Ok(IndividualObserverCmf {
         lms: lms_matrix,

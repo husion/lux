@@ -5,7 +5,7 @@ use crate::color::{
 use crate::error::{LuxError, LuxResult};
 use crate::illuminants::{blackbody, cri_ref, daylightphase, xyz_to_cct};
 use crate::photometry::integrate_xyz;
-use crate::spectrum::{getwlr, SpectralMatrix, Spectrum, WavelengthGrid};
+use crate::spectrum::{getwlr, Spectrum, Spectrum, WavelengthGrid};
 
 const CIE_RA_SAMPLE_CSV: &str = include_str!("../data/rfls/CIE_13_3_1995_R14.dat");
 const CIE_RF_SAMPLE_CSV: &str = include_str!("../data/rfls/CIE224_2017_R99_1nm.dat");
@@ -129,18 +129,18 @@ pub fn spd_to_ciera_result(spectrum: &Spectrum) -> LuxResult<CieRaResult> {
     })
 }
 
-pub fn spds_to_ciera(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
+pub fn spds_to_ciera(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     Ok(project_batch_results(
         spds_to_ciera_result(spectra)?,
         |result| result.ra,
     ))
 }
 
-pub fn spds_to_ciera_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRaResult>> {
+pub fn spds_to_ciera_result(spectra: &Spectrum) -> LuxResult<Vec<CieRaResult>> {
     map_spectral_matrix(spectra, spd_to_ciera_result)
 }
 
-pub fn spds_to_ciera_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
+pub fn spds_to_ciera_special(spectra: &Spectrum) -> LuxResult<Vec<Vec<f64>>> {
     Ok(project_batch_results(
         spds_to_ciera_result(spectra)?,
         |result| result.ri,
@@ -261,57 +261,57 @@ pub fn spd_to_ies_tm30_result(spectrum: &Spectrum) -> LuxResult<Tm30Result> {
     spd_to_tm30_result(spectrum)
 }
 
-pub fn spds_to_cierf(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
+pub fn spds_to_cierf(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     Ok(spds_to_cierf_result(spectra)?
         .into_iter()
         .map(|result| result.rf)
         .collect())
 }
 
-pub fn spds_to_cierf_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRfResult>> {
+pub fn spds_to_cierf_result(spectra: &Spectrum) -> LuxResult<Vec<CieRfResult>> {
     map_spectral_matrix(spectra, spd_to_cierf_result)
 }
 
-pub fn spds_to_iesrf(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
+pub fn spds_to_iesrf(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     spds_to_cierf(spectra)
 }
 
-pub fn spds_to_iesrf_result(spectra: &SpectralMatrix) -> LuxResult<Vec<CieRfResult>> {
+pub fn spds_to_iesrf_result(spectra: &Spectrum) -> LuxResult<Vec<CieRfResult>> {
     spds_to_cierf_result(spectra)
 }
 
-pub fn spds_to_tm30_result(spectra: &SpectralMatrix) -> LuxResult<Vec<Tm30Result>> {
+pub fn spds_to_tm30_result(spectra: &Spectrum) -> LuxResult<Vec<Tm30Result>> {
     map_spectral_matrix(spectra, spd_to_tm30_result)
 }
 
-pub fn spds_to_ies_tm30_result(spectra: &SpectralMatrix) -> LuxResult<Vec<Tm30Result>> {
+pub fn spds_to_ies_tm30_result(spectra: &Spectrum) -> LuxResult<Vec<Tm30Result>> {
     spds_to_tm30_result(spectra)
 }
 
-pub fn spds_to_cierg(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
+pub fn spds_to_cierg(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     Ok(project_batch_results(
         spds_to_cierf_result(spectra)?,
         |result| result.rg,
     ))
 }
 
-pub fn spds_to_iesrg(spectra: &SpectralMatrix) -> LuxResult<Vec<f64>> {
+pub fn spds_to_iesrg(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     spds_to_cierg(spectra)
 }
 
-pub fn spds_to_cierf_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
+pub fn spds_to_cierf_special(spectra: &Spectrum) -> LuxResult<Vec<Vec<f64>>> {
     Ok(project_batch_results(
         spds_to_cierf_result(spectra)?,
         |result| result.rfi,
     ))
 }
 
-pub fn spds_to_iesrf_special(spectra: &SpectralMatrix) -> LuxResult<Vec<Vec<f64>>> {
+pub fn spds_to_iesrf_special(spectra: &Spectrum) -> LuxResult<Vec<Vec<f64>>> {
     spds_to_cierf_special(spectra)
 }
 
 fn map_spectral_matrix<T>(
-    spectra: &SpectralMatrix,
+    spectra: &Spectrum,
     mut map_spectrum: impl FnMut(&Spectrum) -> LuxResult<T>,
 ) -> LuxResult<Vec<T>> {
     let wavelengths = spectra.wavelengths().to_vec();
@@ -329,15 +329,15 @@ fn project_batch_results<T, U>(results: Vec<T>, project_result: impl FnMut(T) ->
     results.into_iter().map(project_result).collect()
 }
 
-fn cie_ra_samples() -> LuxResult<SpectralMatrix> {
+fn cie_ra_samples() -> LuxResult<Spectrum> {
     sample_matrix_from_csv(CIE_RA_SAMPLE_CSV, CIE_RA_SAMPLE_COUNT)
 }
 
-fn cie_rf_samples() -> LuxResult<SpectralMatrix> {
+fn cie_rf_samples() -> LuxResult<Spectrum> {
     sample_matrix_from_csv(CIE_RF_SAMPLE_CSV, CIE_RF_SAMPLE_COUNT)
 }
 
-fn sample_matrix_from_csv(csv: &str, sample_count: usize) -> LuxResult<SpectralMatrix> {
+fn sample_matrix_from_csv(csv: &str, sample_count: usize) -> LuxResult<Spectrum> {
     let mut wavelengths = Vec::new();
     let mut spectra = vec![Vec::new(); sample_count];
 
@@ -360,7 +360,7 @@ fn sample_matrix_from_csv(csv: &str, sample_count: usize) -> LuxResult<SpectralM
         }
     }
 
-    SpectralMatrix::new(wavelengths, spectra)
+    Spectrum::new(wavelengths, spectra)
 }
 
 fn cierf_reference(cct: f64, grid: WavelengthGrid) -> LuxResult<Spectrum> {
@@ -426,7 +426,7 @@ fn relative_white_xyz(spectrum: &Spectrum, observer: &TristimulusObserver) -> Lu
 
 fn sample_xyz_relative_to_white(
     source: &Spectrum,
-    samples: &SpectralMatrix,
+    samples: &Spectrum,
     observer: &TristimulusObserver,
 ) -> LuxResult<Vec<[f64; 3]>> {
     let wavelengths = source.wavelengths();
@@ -661,7 +661,7 @@ mod tests {
         spds_to_iesrf_result, spds_to_iesrf_special, spds_to_iesrg, spds_to_tm30_result,
     };
     use crate::illuminants::standard_illuminant;
-    use crate::spectrum::{SpectralMatrix, Spectrum};
+    use crate::spectrum::{Spectrum, Spectrum};
 
     #[test]
     fn ciera_d65_is_near_perfect() {
@@ -683,7 +683,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -724,7 +724,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -740,7 +740,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -756,7 +756,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -772,7 +772,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -788,7 +788,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -804,7 +804,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -835,7 +835,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -921,7 +921,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )
@@ -937,7 +937,7 @@ mod tests {
         let grid = Some(crate::spectrum::WavelengthGrid::new(380.0, 780.0, 1.0).unwrap());
         let d65 = standard_illuminant("D65", grid).unwrap();
         let f4 = standard_illuminant("F4", grid).unwrap();
-        let spectra = SpectralMatrix::new(
+        let spectra = Spectrum::new(
             d65.wavelengths().to_vec(),
             vec![d65.values().to_vec(), f4.values().to_vec()],
         )

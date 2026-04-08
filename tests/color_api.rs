@@ -7,7 +7,7 @@ use lux_rs::{
     cam16_viewing_conditions, ciecam02_viewing_conditions, delta_e, delta_e_cie76,
     delta_e_ciede2000, get_cie_mesopic_adaptation, lab_to_xyz, lms_to_xyz, luv_to_xyz, srgb_to_xyz,
     vlbar_cie_mesopic, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv, xyz_to_yxy,
-    yuv_to_xyz, yxy_to_xyz, CamUcsType, DeltaEFormula, Observer, Tristimulus,
+    yuv_to_xyz, yxy_to_xyz, CamUcsType, DeltaEFormula, Observer, Tristimulus, Tristimulus,
 };
 
 #[test]

@@ -12,7 +12,7 @@ use lux_rs::{
     spd_to_cierg, spd_to_ler, spd_to_power, spd_to_xyz, srgb_to_xyz, standard_illuminant,
     vlbar_cie_mesopic, xyz_to_cct, xyz_to_lab, xyz_to_lms, xyz_to_luv, xyz_to_srgb, xyz_to_yuv,
     xyz_to_yxy, yuv_to_xyz, yxy_to_xyz, CamAppearance, CamSurround, CamUcsAppearance, CamUcsType,
-    CatMode, CatSurround, CatTransform, Observer, PowerType, SpectralMatrix, Spectrum,
+    CatMode, CatSurround, CatTransform, Observer, PowerType, Spectrum, Spectrum,
     SpectrumNormalization, WavelengthGrid,
 };
 
@@ -975,7 +975,7 @@ fn current_rust_basics_match_luxpy() {
     .unwrap();
     assert_close(ler_1964, parse_scalar(&baselines["ler_1964"]), 1e-9);
 
-    let ler_many = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+    let ler_many = Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
         .unwrap()
         .spd_to_ler(&observer)
         .unwrap();
@@ -1009,7 +1009,7 @@ fn current_rust_basics_match_luxpy() {
         1e-9,
     );
 
-    let xyz_many = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+    let xyz_many = Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
         .unwrap()
         .spd_to_xyz(&observer, true)
         .unwrap();
@@ -1024,7 +1024,7 @@ fn current_rust_basics_match_luxpy() {
     );
 
     let xyz_many_absolute =
-        SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
+        Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]])
             .unwrap()
             .spd_to_xyz(&observer, false)
             .unwrap();

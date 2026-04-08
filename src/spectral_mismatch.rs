@@ -1,5 +1,5 @@
 use crate::error::{LuxError, LuxResult};
-use crate::spectrum::{getwld, SpectralMatrix, Spectrum};
+use crate::spectrum::{getwld, Spectrum, Spectrum};
 
 struct SpectralMismatchContext {
     spacing: Vec<f64>,
@@ -13,7 +13,7 @@ pub fn spectral_mismatch_f1prime(
     target_responsivity: &Spectrum,
 ) -> LuxResult<f64> {
     Ok(spectral_mismatch_f1primes(
-        &SpectralMatrix::new(
+        &Spectrum::new(
             detector.wavelengths().to_vec(),
             vec![detector.values().to_vec()],
         )?,
@@ -23,7 +23,7 @@ pub fn spectral_mismatch_f1prime(
 }
 
 pub fn spectral_mismatch_f1primes(
-    detectors: &SpectralMatrix,
+    detectors: &Spectrum,
     calibration_illuminant: &Spectrum,
     target_responsivity: &Spectrum,
 ) -> LuxResult<Vec<f64>> {
@@ -57,11 +57,11 @@ pub fn spectral_mismatch_correction_factor(
     target_responsivity: &Spectrum,
 ) -> LuxResult<f64> {
     Ok(spectral_mismatch_correction_factors(
-        &SpectralMatrix::new(
+        &Spectrum::new(
             measured_source.wavelengths().to_vec(),
             vec![measured_source.values().to_vec()],
         )?,
-        &SpectralMatrix::new(
+        &Spectrum::new(
             detector.wavelengths().to_vec(),
             vec![detector.values().to_vec()],
         )?,
@@ -71,8 +71,8 @@ pub fn spectral_mismatch_correction_factor(
 }
 
 pub fn spectral_mismatch_correction_factors(
-    measured_sources: &SpectralMatrix,
-    detectors: &SpectralMatrix,
+    measured_sources: &Spectrum,
+    detectors: &Spectrum,
     calibration_illuminant: &Spectrum,
     target_responsivity: &Spectrum,
 ) -> LuxResult<Vec<Vec<f64>>> {
@@ -107,7 +107,7 @@ pub fn spectral_mismatch_correction_factors(
 }
 
 fn build_context(
-    detectors: &SpectralMatrix,
+    detectors: &Spectrum,
     calibration_illuminant: &Spectrum,
     target_responsivity: &Spectrum,
     wavelengths: &[f64],
