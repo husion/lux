@@ -4,7 +4,7 @@ use crate::color::{
 };
 use crate::error::{LuxError, LuxResult};
 use crate::illuminants::{blackbody, cri_ref, daylightphase, xyz_to_cct};
-use crate::photometry::integrate_xyz;
+use crate::photometry::{integrate_xyz, spd_to_xyz};
 use crate::spectrum::{getwlr, Spectrum, WavelengthGrid};
 
 const CIE_RA_SAMPLE_CSV: &str = include_str!("../data/rfls/CIE_13_3_1995_R14.dat");
@@ -101,7 +101,7 @@ pub fn spd_to_ciera_result(spectrum: &Spectrum) -> LuxResult<CieRaResult> {
                 1.0,
             )
         })
-        .collect::<Vec<_>>();
+        .collect();
     let adapted_test_xyz = adapted_test_xyz?;
     let adapted_test_white = cat_apply(
         rounded_test_white,
@@ -186,14 +186,14 @@ pub fn spd_to_tm30_result(spectrum: &Spectrum) -> LuxResult<Tm30Result> {
     let observer_xyz = Observer::Cie1964_10.standard()?;
     let observer_cct = Observer::Cie1931_2.standard()?;
 
-    let test_white_cct = source.spd_to_xyz(&observer_cct, true)?;
+    let test_white_cct = spd_to_xyz(&source, &observer_cct, true)?;
     let (cct, _) = xyz_to_cct(test_white_cct, Observer::Cie1931_2)?;
     let reference = cierf_reference(cct, CIE_RF_GRID)?;
 
     let test_xyz = sample_xyz_relative_to_white(&source, &samples, &observer_xyz)?;
     let reference_xyz = sample_xyz_relative_to_white(&reference, &samples, &observer_xyz)?;
-    let test_white = source.spd_to_xyz(&observer_xyz, true)?;
-    let reference_white = reference.spd_to_xyz(&observer_xyz, true)?;
+    let test_white = spd_to_xyz(&source, &observer_xyz, true)?;
+    let reference_white = spd_to_xyz(&reference, &observer_xyz, true)?;
 
     let test_conditions = ciecam02_viewing_conditions(
         test_white,
@@ -218,12 +218,12 @@ pub fn spd_to_tm30_result(spectrum: &Spectrum) -> LuxResult<Tm30Result> {
         .iter()
         .copied()
         .map(|xyz| xyz_to_jab_cam02ucs(xyz, test_conditions))
-        .collect::<Vec<_>>();
+        .collect();
     let jab_reference: LuxResult<Vec<[f64; 3]>> = reference_xyz
         .iter()
         .copied()
         .map(|xyz| xyz_to_jab_cam02ucs(xyz, reference_conditions))
-        .collect::<Vec<_>>();
+        .collect();
     let jab_test = jab_test?;
     let jab_reference = jab_reference?;
 
@@ -322,7 +322,7 @@ fn map_spectral_matrix<T>(
             let spectrum = Spectrum::new(wavelengths.clone(), values.clone())?;
             map_spectrum(&spectrum)
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 fn project_batch_results<T, U>(results: Vec<T>, project_result: impl FnMut(T) -> U) -> Vec<U> {
@@ -375,8 +375,8 @@ fn cierf_reference(cct: f64, grid: WavelengthGrid) -> LuxResult<Spectrum> {
     let blackbody = blackbody(cct, Some(grid), None, true)?;
     let daylight = daylightphase(cct, Some(grid), false, false, None)?;
     let observer = Observer::Cie1931_2.standard()?;
-    let blackbody_y = blackbody.spd_to_xyz(&observer, false)?[1];
-    let daylight_y = daylight.spd_to_xyz(&observer, false)?[1];
+    let blackbody_y = spd_to_xyz(&blackbody, &observer, false)?[1];
+    let daylight_y = spd_to_xyz(&daylight, &observer, false)?[1];
     let tb = 4000.0;
     let te = 5000.0;
     let c_bb = clamp01((te - cct) / (te - tb));
@@ -421,7 +421,7 @@ fn wavelength_grid_from_spectrum(spectrum: &Spectrum) -> LuxResult<WavelengthGri
 }
 
 fn relative_white_xyz(spectrum: &Spectrum, observer: &TristimulusObserver) -> LuxResult<[f64; 3]> {
-    spectrum.spd_to_xyz(observer, true)
+    spd_to_xyz(spectrum, observer, true)
 }
 
 fn sample_xyz_relative_to_white(
@@ -467,7 +467,7 @@ fn sample_xyz_relative_to_white(
             )?;
             Ok([raw[0] * scale, raw[1] * scale, raw[2] * scale])
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 fn round_xyz_by_yxy(xyz: [f64; 3]) -> [f64; 3] {
