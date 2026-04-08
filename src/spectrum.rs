@@ -33,13 +33,13 @@ impl WavelengthGrid {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Spectrum {
+pub(crate) struct SingleSpectrum {
     wavelengths: Vec<f64>,
     values: Vec<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SpectralMatrix {
+pub struct Spectrum {
     wavelengths: Vec<f64>,
     spectra: Vec<Vec<f64>>,
 }
@@ -54,7 +54,23 @@ pub enum SpectrumNormalization {
     Quantal(f64),
 }
 
-impl Spectrum {
+trait IntoSpectrumRows {
+    fn into_rows(self) -> Vec<Vec<f64>>;
+}
+
+impl IntoSpectrumRows for Vec<f64> {
+    fn into_rows(self) -> Vec<Vec<f64>> {
+        vec![self]
+    }
+}
+
+impl IntoSpectrumRows for Vec<Vec<f64>> {
+    fn into_rows(self) -> Vec<Vec<f64>> {
+        self
+    }
+}
+
+impl SingleSpectrum {
     pub fn new(wavelengths: Vec<f64>, values: Vec<f64>) -> LuxResult<Self> {
         if wavelengths.is_empty() || values.is_empty() {
             return Err(LuxError::EmptyInput);
@@ -300,8 +316,9 @@ impl Spectrum {
     }
 }
 
-impl SpectralMatrix {
-    pub fn new(wavelengths: Vec<f64>, spectra: Vec<Vec<f64>>) -> LuxResult<Self> {
+impl Spectrum {
+    pub fn new<T: IntoSpectrumRows>(wavelengths: Vec<f64>, spectra: T) -> LuxResult<Self> {
+        let spectra = spectra.into_rows();
         if wavelengths.is_empty() || spectra.is_empty() {
             return Err(LuxError::EmptyInput);
         }
@@ -358,7 +375,7 @@ impl SpectralMatrix {
                 spectrum.cie_interp_linear(target_wavelengths, negative_values_allowed)?;
             spectra.push(interpolated.values().to_vec());
         }
-        SpectralMatrix::new(target_wavelengths.to_vec(), spectra)
+        Spectrum::new(target_wavelengths.to_vec(), spectra)
     }
 
     pub fn normalize_each(
@@ -378,7 +395,7 @@ impl SpectralMatrix {
             spectra.push(normalized.values().to_vec());
         }
 
-        SpectralMatrix::new(self.wavelengths.clone(), spectra)
+        Spectrum::new(self.wavelengths.clone(), spectra)
     }
 
     pub fn spd_to_xyz(
@@ -479,7 +496,7 @@ impl SpectralMatrix {
 
     pub fn spectral_mismatch_correction_factors(
         &self,
-        detectors: &SpectralMatrix,
+        detectors: &Spectrum,
         calibration_illuminant: &Spectrum,
         target_responsivity: &Spectrum,
     ) -> LuxResult<Vec<Vec<f64>>> {
