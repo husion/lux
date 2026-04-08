@@ -71,6 +71,10 @@ impl IntoSpectrumRows for Vec<Vec<f64>> {
 }
 
 impl SingleSpectrum {
+    fn as_batch(&self) -> LuxResult<Spectrum> {
+        Spectrum::new(self.wavelengths.clone(), self.values.clone())
+    }
+
     pub fn new(wavelengths: Vec<f64>, values: Vec<f64>) -> LuxResult<Self> {
         if wavelengths.is_empty() || values.is_empty() {
             return Err(LuxError::EmptyInput);
@@ -205,13 +209,13 @@ impl SingleSpectrum {
                 1.0 / self.values[index]
             }
             SpectrumNormalization::Radiometric(target_power) => {
-                target_power / spd_to_power(self, PowerType::Radiometric, None)?
+                target_power / spd_to_power(&self.as_batch()?, PowerType::Radiometric, None)?
             }
             SpectrumNormalization::Photometric(target_power) => {
-                target_power / spd_to_power(self, PowerType::Photometric, observer)?
+                target_power / spd_to_power(&self.as_batch()?, PowerType::Photometric, observer)?
             }
             SpectrumNormalization::Quantal(target_power) => {
-                target_power / spd_to_power(self, PowerType::Quantal, None)?
+                target_power / spd_to_power(&self.as_batch()?, PowerType::Quantal, None)?
             }
         };
 
@@ -226,11 +230,11 @@ impl SingleSpectrum {
         observer: &TristimulusObserver,
         relative: bool,
     ) -> LuxResult<[f64; 3]> {
-        crate::photometry::spd_to_xyz(self, observer, relative)
+        crate::photometry::spd_to_xyz(&self.as_batch()?, observer, relative)
     }
 
     pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<f64> {
-        crate::photometry::spd_to_ler(self, observer)
+        crate::photometry::spd_to_ler(&self.as_batch()?, observer)
     }
 
     pub fn spd_to_power(
@@ -238,59 +242,59 @@ impl SingleSpectrum {
         power_type: PowerType,
         observer: Option<&TristimulusObserver>,
     ) -> LuxResult<f64> {
-        spd_to_power(self, power_type, observer)
+        spd_to_power(&self.as_batch()?, power_type, observer)
     }
 
     pub fn spd_to_ciera(&self) -> LuxResult<f64> {
-        spd_to_ciera(self)
+        spd_to_ciera(&self.as_batch()?)
     }
 
     pub fn spd_to_ciera_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_ciera_special(self)
+        spd_to_ciera_special(&self.as_batch()?)
     }
 
     pub fn spd_to_ciera_result(&self) -> LuxResult<CieRaResult> {
-        spd_to_ciera_result(self)
+        spd_to_ciera_result(&self.as_batch()?)
     }
 
     pub fn spd_to_cierf(&self) -> LuxResult<f64> {
-        spd_to_cierf(self)
+        spd_to_cierf(&self.as_batch()?)
     }
 
     pub fn spd_to_iesrf(&self) -> LuxResult<f64> {
-        spd_to_iesrf(self)
+        spd_to_iesrf(&self.as_batch()?)
     }
 
     pub fn spd_to_cierg(&self) -> LuxResult<f64> {
-        spd_to_cierg(self)
+        spd_to_cierg(&self.as_batch()?)
     }
 
     pub fn spd_to_iesrg(&self) -> LuxResult<f64> {
-        spd_to_iesrg(self)
+        spd_to_iesrg(&self.as_batch()?)
     }
 
     pub fn spd_to_cierf_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_cierf_special(self)
+        spd_to_cierf_special(&self.as_batch()?)
     }
 
     pub fn spd_to_iesrf_special(&self) -> LuxResult<Vec<f64>> {
-        spd_to_iesrf_special(self)
+        spd_to_iesrf_special(&self.as_batch()?)
     }
 
     pub fn spd_to_cierf_result(&self) -> LuxResult<CieRfResult> {
-        spd_to_cierf_result(self)
+        spd_to_cierf_result(&self.as_batch()?)
     }
 
     pub fn spd_to_iesrf_result(&self) -> LuxResult<CieRfResult> {
-        spd_to_iesrf_result(self)
+        spd_to_iesrf_result(&self.as_batch()?)
     }
 
     pub fn spd_to_tm30_result(&self) -> LuxResult<Tm30Result> {
-        spd_to_tm30_result(self)
+        spd_to_tm30_result(&self.as_batch()?)
     }
 
     pub fn spd_to_ies_tm30_result(&self) -> LuxResult<Tm30Result> {
-        spd_to_ies_tm30_result(self)
+        spd_to_ies_tm30_result(&self.as_batch()?)
     }
 
     pub fn spectral_mismatch_f1prime(
@@ -298,7 +302,7 @@ impl SingleSpectrum {
         calibration_illuminant: &Spectrum,
         target_responsivity: &Spectrum,
     ) -> LuxResult<f64> {
-        spectral_mismatch_f1prime(self, calibration_illuminant, target_responsivity)
+        spectral_mismatch_f1prime(&self.as_batch()?, calibration_illuminant, target_responsivity)
     }
 
     pub fn spectral_mismatch_correction_factor(
@@ -308,7 +312,7 @@ impl SingleSpectrum {
         target_responsivity: &Spectrum,
     ) -> LuxResult<f64> {
         spectral_mismatch_correction_factor(
-            self,
+            &self.as_batch()?,
             detector,
             calibration_illuminant,
             target_responsivity,
@@ -440,7 +444,7 @@ impl Spectrum {
         self.spectra
             .iter()
             .map(|values| {
-                let spectrum = SingleSpectrum::new(wavelengths.to_vec(), values.clone())?;
+                let spectrum = Spectrum::new(wavelengths.to_vec(), values.clone())?;
                 crate::photometry::integrate_xyz(
                     &spectrum,
                     x_bar.values(),
@@ -450,17 +454,17 @@ impl Spectrum {
                     relative,
                 )
             })
-            .collect::<Vec<_>>()
+            .collect()
     }
 
     pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<Vec<f64>> {
         self.spectra
             .iter()
             .map(|values| {
-                let spectrum = SingleSpectrum::new(self.wavelengths.to_vec(), values.clone())?;
-                spectrum.spd_to_ler(observer)
+                let spectrum = Spectrum::new(self.wavelengths.to_vec(), values.clone())?;
+                crate::photometry::spd_to_ler(&spectrum, observer)
             })
-            .collect::<Vec<_>>()
+            .collect()
     }
 
     pub fn spd_to_ciera(&self) -> LuxResult<Vec<f64>> {
