@@ -101,7 +101,7 @@ pub fn spd_to_ciera_result(spectrum: &Spectrum) -> LuxResult<CieRaResult> {
                 1.0,
             )
         })
-        .collect();
+        .collect::<Vec<_>>();
     let adapted_test_xyz = adapted_test_xyz?;
     let adapted_test_white = cat_apply(
         rounded_test_white,
@@ -218,12 +218,12 @@ pub fn spd_to_tm30_result(spectrum: &Spectrum) -> LuxResult<Tm30Result> {
         .iter()
         .copied()
         .map(|xyz| xyz_to_jab_cam02ucs(xyz, test_conditions))
-        .collect();
+        .collect::<Vec<_>>();
     let jab_reference: LuxResult<Vec<[f64; 3]>> = reference_xyz
         .iter()
         .copied()
         .map(|xyz| xyz_to_jab_cam02ucs(xyz, reference_conditions))
-        .collect();
+        .collect::<Vec<_>>();
     let jab_test = jab_test?;
     let jab_reference = jab_reference?;
 
@@ -231,13 +231,13 @@ pub fn spd_to_tm30_result(spectrum: &Spectrum) -> LuxResult<Tm30Result> {
         .iter()
         .zip(jab_reference.iter())
         .map(|(test, reference)| euclidean3(*test, *reference))
-        .collect();
+        .collect::<Vec<_>>();
     let dea = mean(&dei)?;
     let rfi: Vec<f64> = dei
         .iter()
         .copied()
         .map(|de| log_scale(de, CIE_RF_SCALE_FACTOR))
-        .collect();
+        .collect::<Vec<_>>();
     let rf = log_scale(dea, CIE_RF_SCALE_FACTOR);
 
     let hue_summary = tm30_hue_bin_summary(&jab_test, &jab_reference, CIE_RF_HUE_BINS)?;
@@ -265,7 +265,7 @@ pub fn spds_to_cierf(spectra: &Spectrum) -> LuxResult<Vec<f64>> {
     Ok(spds_to_cierf_result(spectra)?
         .into_iter()
         .map(|result| result.rf)
-        .collect())
+        .collect::<Vec<_>>())
 }
 
 pub fn spds_to_cierf_result(spectra: &Spectrum) -> LuxResult<Vec<CieRfResult>> {
@@ -322,11 +322,11 @@ fn map_spectral_matrix<T>(
             let spectrum = Spectrum::new(wavelengths.clone(), values.clone())?;
             map_spectrum(&spectrum)
         })
-        .collect()
+        .collect::<Vec<_>>()
 }
 
 fn project_batch_results<T, U>(results: Vec<T>, project_result: impl FnMut(T) -> U) -> Vec<U> {
-    results.into_iter().map(project_result).collect()
+    results.into_iter().map(project_result).collect::<Vec<_>>()
 }
 
 fn cie_ra_samples() -> LuxResult<Spectrum> {
@@ -387,7 +387,7 @@ fn cierf_reference(cct: f64, grid: WavelengthGrid) -> LuxResult<Spectrum> {
         .iter()
         .zip(daylight.values().iter())
         .map(|(bb, dl)| (100.0 * bb / blackbody_y) * c_bb + (100.0 * dl / daylight_y) * c_dl)
-        .collect();
+        .collect::<Vec<_>>();
     let index_560 = wavelengths
         .iter()
         .enumerate()
@@ -400,7 +400,7 @@ fn cierf_reference(cct: f64, grid: WavelengthGrid) -> LuxResult<Spectrum> {
         mixed
             .into_iter()
             .map(|value| value / normalization)
-            .collect(),
+            .collect::<Vec<_>>(),
     )
 }
 
@@ -455,7 +455,7 @@ fn sample_xyz_relative_to_white(
                     .iter()
                     .zip(reflectance.iter())
                     .map(|(spd, reflectance)| spd * reflectance)
-                    .collect(),
+                    .collect::<Vec<_>>(),
             )?;
             let raw = integrate_xyz(
                 &reflected,
@@ -467,7 +467,7 @@ fn sample_xyz_relative_to_white(
             )?;
             Ok([raw[0] * scale, raw[1] * scale, raw[2] * scale])
         })
-        .collect()
+        .collect::<Vec<_>>()
 }
 
 fn round_xyz_by_yxy(xyz: [f64; 3]) -> [f64; 3] {
@@ -537,7 +537,7 @@ fn tm30_hue_bin_summary(
 
     let edges: Vec<f64> = (0..=hue_bins)
         .map(|index| (index as f64) * std::f64::consts::TAU / hue_bins as f64)
-        .collect();
+        .collect::<Vec<_>>();
     let mut bins = Vec::with_capacity(hue_bins);
 
     for bin_index in 0..hue_bins {
@@ -604,8 +604,8 @@ fn tm30_hue_bin_summary(
         });
     }
 
-    let test_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.test_jab).collect();
-    let reference_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.reference_jab).collect();
+    let test_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.test_jab).collect::<Vec<_>>();
+    let reference_points: Vec<[f64; 3]> = bins.iter().map(|bin| bin.reference_jab).collect::<Vec<_>>();
     Ok(Tm30HueSummary {
         bins,
         test_area: polygon_area_ab(&test_points),

@@ -304,7 +304,7 @@ pub fn blackbody(
     let values = wavelengths
         .iter()
         .map(|&wavelength| planck_spectral_radiance(wavelength, cct, n) / normalization)
-        .collect();
+        .collect::<Vec<_>>();
 
     Spectrum::new(wavelengths, values)
 }
@@ -378,7 +378,7 @@ pub fn daylightphase(
         .zip(s1.iter())
         .zip(s2.iter())
         .map(|((s0, s1), s2)| s0 + m1 * s1 + m2 * s2)
-        .collect();
+        .collect::<Vec<_>>();
 
     let idx_560 = wavelengths
         .iter()
@@ -608,7 +608,7 @@ fn parse_series_illuminant_csv(csv: &str, column_index: usize) -> LuxResult<Spec
         if trimmed.is_empty() {
             continue;
         }
-        let parts: Vec<&str> = trimmed.split(',').collect();
+        let parts: Vec<&str> = trimmed.split(',').collect::<Vec<_>>();
         let wavelength = parts
             .first()
             .ok_or(LuxError::ParseError("missing wavelength"))?
@@ -632,7 +632,7 @@ fn interpolate_daylight_component(source: &[f64; 48], target_wavelengths: &[f64]
     target_wavelengths
         .iter()
         .map(|&target| interpolate_linear(&DAYLIGHT_WAVELENGTHS_10NM, source, target))
-        .collect()
+        .collect::<Vec<_>>()
 }
 
 fn interpolate_linear(wavelengths: &[f64], values: &[f64], target: f64) -> f64 {

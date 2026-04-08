@@ -595,19 +595,19 @@ impl Tristimulus {
     }
 
     pub fn xyz_to_yxy(&self) -> Self {
-        Self::new(self.values.iter().copied().map(xyz_to_yxy).collect())
+        Self::new(self.values.iter().copied().map(xyz_to_yxy).collect::<Vec<_>>())
     }
 
     pub fn yxy_to_xyz(&self) -> Self {
-        Self::new(self.values.iter().copied().map(yxy_to_xyz).collect())
+        Self::new(self.values.iter().copied().map(yxy_to_xyz).collect::<Vec<_>>())
     }
 
     pub fn xyz_to_yuv(&self) -> Self {
-        Self::new(self.values.iter().copied().map(xyz_to_yuv).collect())
+        Self::new(self.values.iter().copied().map(xyz_to_yuv).collect::<Vec<_>>())
     }
 
     pub fn yuv_to_xyz(&self) -> Self {
-        Self::new(self.values.iter().copied().map(yuv_to_xyz).collect())
+        Self::new(self.values.iter().copied().map(yuv_to_xyz).collect::<Vec<_>>())
     }
 
     pub fn xyz_to_lab(&self, white_point: [f64; 3]) -> Self {
@@ -616,7 +616,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| xyz_to_lab(value, white_point))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -626,7 +626,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| lab_to_xyz(value, white_point))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -636,7 +636,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| xyz_to_luv(value, white_point))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -646,7 +646,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| luv_to_xyz(value, white_point))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -676,7 +676,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| xyz_to_srgb(value, gamma, offset, use_linear_part))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -686,7 +686,7 @@ impl Tristimulus {
                 .iter()
                 .copied()
                 .map(|value| srgb_to_xyz(value, gamma, offset, use_linear_part))
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -794,7 +794,7 @@ impl Tristimulus {
             .copied()
             .zip(other.values.iter().copied())
             .map(|(left, right)| delta_e(left, right, white_point, formula))
-            .collect())
+            .collect::<Vec<_>>())
     }
 
     pub fn cam_forward(
@@ -805,7 +805,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam_forward(value, conditions))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn cam16_forward(
@@ -816,7 +816,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam16_forward(value, conditions))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn ciecam02_forward(
@@ -827,7 +827,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| ciecam02_forward(value, conditions))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn cam_ucs_forward(
@@ -839,7 +839,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam_ucs_forward(value, conditions, ucs_type))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn cam16_ucs_forward(
@@ -851,7 +851,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| cam16_ucs_forward(value, conditions, ucs_type))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn ciecam02_ucs_forward(
@@ -863,7 +863,7 @@ impl Tristimulus {
             .iter()
             .copied()
             .map(|value| ciecam02_ucs_forward(value, conditions, ucs_type))
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn cam_inverse(&self, conditions: ModelCamViewingConditions) -> LuxResult<Self> {
@@ -955,7 +955,7 @@ impl From<TristimulusValue> for Tristimulus {
 
 impl FromIterator<TristimulusValue> for Tristimulus {
     fn from_iter<T: IntoIterator<Item = TristimulusValue>>(iter: T) -> Self {
-        Self::new(iter.into_iter().map(TristimulusValue::values).collect())
+        Self::new(iter.into_iter().map(TristimulusValue::values).collect::<Vec<_>>())
     }
 }
 
@@ -1984,7 +1984,7 @@ pub fn vlbar_cie_mesopic(
             .iter()
             .zip(scotopic.values().iter())
             .map(|(vp, vs)| m * vp + (1.0 - m) * vs)
-            .collect();
+            .collect::<Vec<_>>();
 
         let k = 683.0 / values[peak_index];
         curves.push(values);
@@ -2027,7 +2027,7 @@ fn load_scotopic_vlbar_on(target_wavelengths: &[f64]) -> LuxResult<Spectrum> {
                 value
             }
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     Spectrum::new(target_wavelengths.to_vec(), clipped)
 }

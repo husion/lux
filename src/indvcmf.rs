@@ -150,7 +150,7 @@ pub fn individual_observer_cmf(
     let corrected_macular_density: Vec<f64> = relative_macular_density
         .iter()
         .map(|value| value * peak_macular_density)
-        .collect();
+        .collect::<Vec<_>>();
 
     let age_scale = if parameters.age <= 60.0 {
         1.0 + 0.02 * (parameters.age - 32.0)
@@ -163,7 +163,7 @@ pub fn individual_observer_cmf(
         .map(|(first, second)| {
             (first * age_scale + second) * (1.0 + parameters.lens_density_variation / 100.0)
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let cone_peak_density = [
         (0.38 + 0.54 * (-fs / 1.333).exp()) * (1.0 + parameters.cone_density_variation[0] / 100.0),
@@ -213,14 +213,14 @@ pub fn individual_observer_cmf(
         corrected_ocular_density
             .iter()
             .map(|value| 10f64.powf(-value))
-            .collect(),
+            .collect::<Vec<_>>(),
     )?;
     let macular_transmission = Spectrum::new(
         wavelengths.clone(),
         corrected_macular_density
             .iter()
             .map(|value| 10f64.powf(-value))
-            .collect(),
+            .collect::<Vec<_>>(),
     )?;
     let photopigment_sensitivity = Spectrum::new(wavelengths, photopigment_sensitivity)?;
 
@@ -280,7 +280,7 @@ fn base_wavelengths() -> Vec<f64> {
     (WAVELENGTH_START..=WAVELENGTH_END)
         .step_by(WAVELENGTH_STEP)
         .map(|value| value as f64)
-        .collect()
+        .collect::<Vec<_>>()
 }
 
 fn parse_columns(data: &str, expected_columns: usize) -> LuxResult<Vec<Vec<f64>>> {

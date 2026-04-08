@@ -217,7 +217,7 @@ impl SingleSpectrum {
 
         SingleSpectrum::new(
             self.wavelengths.clone(),
-            self.values.iter().map(|value| value * scale).collect(),
+            self.values.iter().map(|value| value * scale).collect::<Vec<_>>(),
         )
     }
 
@@ -450,7 +450,7 @@ impl Spectrum {
                     relative,
                 )
             })
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn spd_to_ler(&self, observer: &TristimulusObserver) -> LuxResult<Vec<f64>> {
@@ -460,7 +460,7 @@ impl Spectrum {
                 let spectrum = SingleSpectrum::new(self.wavelengths.to_vec(), values.clone())?;
                 spectrum.spd_to_ler(observer)
             })
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     pub fn spd_to_ciera(&self) -> LuxResult<Vec<f64>> {
@@ -576,7 +576,7 @@ pub fn getwld(wavelengths: &[f64]) -> LuxResult<Vec<f64>> {
     let diffs: Vec<f64> = wavelengths
         .windows(2)
         .map(|pair| pair[1] - pair[0])
-        .collect();
+        .collect::<Vec<_>>();
     let mut spacing = Vec::with_capacity(wavelengths.len());
     spacing.push(diffs[0]);
     for idx in 1..wavelengths.len() - 1 {
