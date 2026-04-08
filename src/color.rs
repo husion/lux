@@ -563,31 +563,23 @@ impl From<[f64; 3]> for TristimulusSample {
     }
 }
 
-impl From<TristimulusSample> for [f64; 3] {
-    fn from(value: TristimulusSample) -> Self {
-        value.values
-    }
-}
-
 impl Tristimulus {
     pub fn new<T: IntoTristimulusRows>(values: T) -> Self {
         Self {
             values: values.into_rows(),
         }
     }
-        Self { values }
-    }
 
-    pub(crate) fn from_single(value: TristimulusSample) -> Self {
-        Self::new(vec![value.values()])
+    pub fn from_single(value: TristimulusValue) -> Self {
+        Self::new(value.values())
     }
 
     pub fn values(&self) -> &[[f64; 3]] {
         &self.values
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = [f64; 3]> + '_ {
-        self.values.iter().copied()
+    pub fn iter(&self) -> impl Iterator<Item = TristimulusValue> + '_ {
+        self.values.iter().copied().map(TristimulusValue::new)
     }
 
     pub fn len(&self) -> usize {
@@ -956,13 +948,13 @@ impl From<Vec<[f64; 3]>> for Tristimulus {
 }
 
 impl From<TristimulusValue> for Tristimulus {
-    fn from(value: Tristimulus) -> Self {
+    fn from(value: TristimulusValue) -> Self {
         Self::from_single(value)
     }
 }
 
 impl FromIterator<TristimulusValue> for Tristimulus {
-    fn from_iter<T: IntoIterator<Item = Tristimulus>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = TristimulusValue>>(iter: T) -> Self {
         Self::new(iter.into_iter().map(Tristimulus::values).collect())
     }
 }
