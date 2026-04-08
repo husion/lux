@@ -115,7 +115,10 @@ fn one_row_matrix_normalization_preserves_numeric_baselines() {
     let matrix = SpectralMatrix::new(vec![555.0, 556.0], vec![vec![1.0, 1.0]]).unwrap();
 
     let normalized = matrix
-        .normalize_each(&[SpectrumNormalization::Photometric(1000.0)], Some(&observer))
+        .normalize_each(
+            &[SpectrumNormalization::Photometric(1000.0)],
+            Some(&observer),
+        )
         .unwrap();
 
     assert_eq!(normalized.spectrum_count(), 1);
