@@ -483,7 +483,7 @@ P0 验收完成标志：
 
 计划：
 
-- [ ] `indvcmf`
+- [x] `indvcmf`
 - [ ] `hypspcim`
 - [ ] `dispcal`
 - [ ] `rgb2spec`
@@ -499,8 +499,14 @@ P0 验收完成标志：
 - 当前已补上 `indvcmf` 的首批确定性单观察者主路径：
   - Asano-style deterministic individual observer LMS CMF
   - LMS -> XYZ matrix interpolation
-  - 基于零 peak-shift 假设的 XYZ CMF 输出
-- 当前尚未实现的是 `indvcmf` 的 peak-shift 路径、Monte Carlo / categorical observer 工作流、更完整的 measurement uncertainty 工作流，以及 `hypspcim` / 外围工具链等其余 P4 子域。
+  - 支持 non-zero peak-shift 的 LMS/XYZ CMF 输出
+  - Monte Carlo observer 参数采样与群体 CMF 生成
+  - categorical observer 群体生成功能
+  - Asano / CIE TC1-97 / Stockman2023 / AICOM+ 模型切换入口
+  - CIE TC1-97 `lms->xyz` 拟合转换矩阵路径
+  - Stockman 2023 专用 `LMS -> XYZ` 转换矩阵路径
+  - 统一上层接口：`individual_observer_generate` / `individual_observer_generate_population`
+- 当前尚未实现的是更完整的 measurement uncertainty 工作流，以及 `hypspcim` / 外围工具链等其余 P4 子域。
 
 ## 6. Python 对拍验收要求
 

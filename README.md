@@ -28,12 +28,15 @@ Current modules and responsibilities:
 - `cam`: `CIECAM02`, `CAM16`, and CAM-UCS forward/inverse appearance-model pipelines with viewing-condition helpers.
 - `cri`: color rendering metrics including `CIE Ra`, `CIE Rf / Rg`, and structured `TM-30` results for single and batch spectra.
 - `spectral_mismatch`: detector spectral mismatch metrics (`f1-prime`) and correction-factor computation utilities.
-- `indvcmf`: deterministic individual-observer CMF construction (Asano-style slice), including LMS-to-XYZ conversion support.
+- `indvcmf`: individual-observer CMF construction with multi-model support (`Asano`, `CieTc197`, `Stockman2023`, `AicomPlus`), unified single/population request APIs, and LMS-to-XYZ conversion helpers.
 - `error`: shared `LuxError` / `LuxResult` types used across modules.
 
 ## What's New in 0.1.1
 
-- Added individual observer CMF support via the new `indvcmf` module (`individual_observer_cmf`, LMS-to-XYZ helpers, and defaults).
+- Expanded `indvcmf` to support multiple physiological models and generation modes:
+  - model switch: `Asano`, `CieTc197`, `Stockman2023`, `AicomPlus`
+  - unified APIs: `individual_observer_generate(...)`, `individual_observer_generate_population(...)`
+  - model-specific helpers kept for compatibility.
 - Added detector spectral mismatch utilities via the new `spectral_mismatch` module (`f1′` and correction factor helpers).
 - Expanded regression and parity coverage with new API-level tests for color, illuminants, photometry, spectral mismatch, spectra, and individual observer paths.
 - Tightened API consistency and warning-free quality across modules (public API alignment and clippy cleanup).
@@ -47,7 +50,7 @@ Current modules and responsibilities:
 - appearance models: first-pass `CIECAM02`, `CAM16`, `CAM02-UCS`, and `CAM16-UCS` forward / inverse paths plus wrapper APIs on top of the color data models
 - color quality metrics: `CIE Ra`, `CIE Rf / Rg`, and structured `TM-30` result objects for single and batch spectral workflows
 - advanced detector utilities: first-pass spectral mismatch (`f1′`) and correction-factor workflows on top of `Spectrum`
-- advanced observer utilities: first-pass `indvcmf` deterministic LMS / XYZ CMF generation for one observer profile
+- advanced observer utilities: `indvcmf` deterministic and population CMF generation with model routing (`Asano` / `CieTc197` / `Stockman2023` / `AicomPlus`)
 
 ## Why This Repo Exists
 

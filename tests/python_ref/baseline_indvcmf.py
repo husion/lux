@@ -69,6 +69,25 @@ def sample_values(values: np.ndarray, idxs: list[int]) -> list[float]:
     return sampled
 
 
+def shift_with_linear_extrapolation(values: np.ndarray, shift_nm: float) -> np.ndarray:
+    out = np.empty_like(values)
+    for idx, target in enumerate(WL):
+        query_wl = target - shift_nm
+        if query_wl <= WL[0]:
+            x0, x1 = WL[0], WL[1]
+            y0, y1 = values[0], values[1]
+        elif query_wl >= WL[-1]:
+            x0, x1 = WL[-2], WL[-1]
+            y0, y1 = values[-2], values[-1]
+        else:
+            right = int(np.searchsorted(WL, query_wl, side="right"))
+            left = right - 1
+            x0, x1 = WL[left], WL[right]
+            y0, y1 = values[left], values[right]
+        out[idx] = y0 + (query_wl - x0) * (y1 - y0) / (x1 - x0)
+    return out
+
+
 def compute_observer(
     lmsa: np.ndarray,
     rmd: np.ndarray,
@@ -79,8 +98,20 @@ def compute_observer(
     lens_var: float,
     macular_var: float,
     cone_var: list[float],
+    cone_peak_shift: list[float] | None = None,
     allow_negative_xyz: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if cone_peak_shift is None:
+        cone_peak_shift = [0.0, 0.0, 0.0]
+
+    lmsa_shifted = np.vstack(
+        [
+            shift_with_linear_extrapolation(lmsa[0], cone_peak_shift[0]),
+            shift_with_linear_extrapolation(lmsa[1], cone_peak_shift[1]),
+            shift_with_linear_extrapolation(lmsa[2], cone_peak_shift[2]),
+        ]
+    )
+
     pk_od_macula = 0.485 * np.exp(-field_size / 6.132) * (1.0 + macular_var / 100.0)
     corrected_rmd = rmd * pk_od_macula
 
@@ -94,10 +125,10 @@ def compute_observer(
     pk_od_m = (0.38 + 0.54 * np.exp(-field_size / 1.333)) * (1.0 + cone_var[1] / 100.0)
     pk_od_s = (0.30 + 0.45 * np.exp(-field_size / 1.333)) * (1.0 + cone_var[2] / 100.0)
 
-    alpha = np.zeros_like(lmsa)
-    alpha[0] = 1.0 - np.power(10.0, -pk_od_l * np.power(10.0, lmsa[0]))
-    alpha[1] = 1.0 - np.power(10.0, -pk_od_m * np.power(10.0, lmsa[1]))
-    alpha[2] = 1.0 - np.power(10.0, -pk_od_s * np.power(10.0, lmsa[2]))
+    alpha = np.zeros_like(lmsa_shifted)
+    alpha[0] = 1.0 - np.power(10.0, -pk_od_l * np.power(10.0, lmsa_shifted[0]))
+    alpha[1] = 1.0 - np.power(10.0, -pk_od_m * np.power(10.0, lmsa_shifted[1]))
+    alpha[2] = 1.0 - np.power(10.0, -pk_od_s * np.power(10.0, lmsa_shifted[2]))
     alpha[2][WL >= 620.0] = 0.0
 
     lms = alpha * np.power(10.0, -(corrected_rmd + corrected_docul)) * WL
@@ -134,6 +165,17 @@ def generate_indvcmf_baselines(root: Path) -> list[tuple[str, str]]:
         macular_var=-10.0,
         cone_var=[5.0, -7.0, 3.0],
     )
+    shifted_lms, shifted_xyz, _, _ = compute_observer(
+        lmsa,
+        rmd,
+        docul,
+        age=45.0,
+        field_size=5.0,
+        lens_var=0.0,
+        macular_var=0.0,
+        cone_var=[0.0, 0.0, 0.0],
+        cone_peak_shift=[1.5, -0.75, 0.5],
+    )
 
     return [
         vec_line("indvcmf_matrix_2", lms_to_xyz_matrix(2.0).ravel()),
@@ -151,6 +193,8 @@ def generate_indvcmf_baselines(root: Path) -> list[tuple[str, str]]:
             "indvcmf_varied_macular_samples",
             sample_values(varied_macular, TRANS_SAMPLE_IDXS),
         ),
+        vec_line("indvcmf_shifted_lms_samples", sample_columns(shifted_lms, LMS_SAMPLE_IDXS)),
+        vec_line("indvcmf_shifted_xyz_samples", sample_columns(shifted_xyz, LMS_SAMPLE_IDXS)),
     ]
 
 

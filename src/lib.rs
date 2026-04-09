@@ -47,9 +47,17 @@ pub use illuminants::{
     standard_illuminant_names, xyz_to_cct,
 };
 pub use indvcmf::{
-    individual_observer_cmf, individual_observer_default_std_devs, individual_observer_lms_to_xyz,
-    individual_observer_lms_to_xyz_matrix, IndividualObserverCmf, IndividualObserverParameters,
-    IndividualObserverStdDevs,
+    individual_observer_categorical_observers, individual_observer_cmf,
+    individual_observer_cmf_aicom_plus, individual_observer_cmf_stockman2023,
+    individual_observer_cmf_with_source, individual_observer_default_std_devs,
+    individual_observer_generate, individual_observer_generate_population,
+    individual_observer_lms_to_xyz, individual_observer_lms_to_xyz_matrix,
+    individual_observer_lms_to_xyz_matrix_stockman2023, individual_observer_monte_carlo,
+    individual_observer_monte_carlo_parameters, individual_observer_us_census_age_distribution,
+    IndividualObserverCategoricalOptions, IndividualObserverCmf, IndividualObserverDataSource,
+    IndividualObserverModel, IndividualObserverMonteCarloOptions, IndividualObserverParameters,
+    IndividualObserverPopulation, IndividualObserverPopulationRequest,
+    IndividualObserverPopulationStrategy, IndividualObserverRequest, IndividualObserverStdDevs,
 };
 pub use photometry::{spd_to_ler, spd_to_power, spd_to_xyz, PowerType};
 pub use spectral_mismatch::{
