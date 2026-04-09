@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
 use lux_rs::{Observer, Spectrum, TristimulusObserver, WavelengthGrid};
 
 pub const WHITE_E: [f64; 3] = [0.5, 0.5, 0.5];
@@ -30,4 +33,29 @@ pub fn spectrum_555_556() -> Spectrum {
 
 pub fn matrix_555_556() -> Spectrum {
     Spectrum::new(vec![555.0, 556.0], vec![vec![1.0, 1.0], vec![2.0, 2.0]]).unwrap()
+}
+
+pub fn resolve_python_executable(root: &Path) -> PathBuf {
+    if let Some(configured) = std::env::var_os("LUX_PYTHON") {
+        return PathBuf::from(configured);
+    }
+
+    let candidates = [
+        root.join("luxpy/.venv/bin/python"),
+        PathBuf::from("python3"),
+        PathBuf::from("python"),
+    ];
+
+    for candidate in candidates {
+        if Command::new(&candidate)
+            .arg("--version")
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false)
+        {
+            return candidate;
+        }
+    }
+
+    panic!("no usable Python executable found; set LUX_PYTHON to a valid interpreter");
 }

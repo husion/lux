@@ -1,3 +1,5 @@
+mod common;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
@@ -51,7 +53,7 @@ fn assert_vec_close(actual: &[f64], expected: &[f64], tolerance: f64) {
 
 fn load_python_baselines() -> HashMap<String, String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let python = root.join("luxpy/.venv/bin/python");
+    let python = common::resolve_python_executable(&root);
     let script = root.join("tests/python_ref/current_baselines.py");
 
     let output = Command::new(python)

@@ -1,3 +1,5 @@
+mod common;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
@@ -59,7 +61,7 @@ fn flatten_sample_values(spectrum: &lux_rs::Spectrum, idxs: &[usize]) -> Vec<f64
 
 fn load_python_baselines() -> HashMap<String, String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let python = root.join("luxpy/.venv/bin/python");
+    let python = common::resolve_python_executable(&root);
     let script = root.join("tests/python_ref/baseline_indvcmf.py");
 
     let output = Command::new(python)
